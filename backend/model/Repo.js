@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { formatToReadable } = require("../config/dateFunction");
 
 const repoSchema = new mongoose.Schema(
   {
@@ -45,11 +46,11 @@ const repoSchema = new mongoose.Schema(
       default: 0,
     },
     lastPushedAt: {
-      type: Date,
-      default: Date.now,
+      type: String,
+      default: formatToReadable(new Date()),
     },
     lastPrActivity: {
-      type: Date,
+      type: String,
     },
   },
   {
