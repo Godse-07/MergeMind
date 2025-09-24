@@ -1,7 +1,20 @@
 const express = require("express");
-const { loginController } = require("../controller/authController");
+const { loginController, signupController, logoutController, connectGithubController } = require("../controller/authController");
+const isLoggedIn = require("../middleware/isLoggedIn");
 const authRouter = express.Router();
 
 authRouter.post("/login", loginController);
+
+authRouter.post("/signup", signupController);
+
+authRouter.get("/logout", logoutController);
+
+authRouter.get("/connectGithub/callback", isLoggedIn, connectGithubController);
+
+authRouter.get("/me", isLoggedIn, (req, res) => {
+    res.status(200).json({ 
+        success: true,
+        user: req.user });
+})
 
 module.exports = authRouter;
