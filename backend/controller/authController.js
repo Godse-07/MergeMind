@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const passwordEncryption = require("../config/passwordEncryption");
 const axios = require("axios");
 const Repo = require("../model/Repo");
+const { registerWebhook } = require("../config/registerWebhook");
 
 const loginController = async (req, res) => {
   try {
@@ -176,6 +177,14 @@ const connectGithubController = async (req, res) => {
     });
 
     await Promise.all(repoPromises);
+
+    for(const repo of repos) {
+        try{
+            await registerWebhook(repo.full_name, accessToken);
+        }catch(err){
+            console.log(`❌ Failed to add webhook for ${repo.full_name}`, err.message);
+        }
+    }
 
     res.status(200).json({ message: "GitHub connected successfully" });
   } catch (error) {

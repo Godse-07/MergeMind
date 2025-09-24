@@ -4,6 +4,7 @@ const cookieParser = require("cookie-parser");
 const mongoConnection = require("./config/db");
 const authRouter = require("./routes/authRoutes");
 const repoRouter = require("./routes/repoRoutes");
+const webhookRouter = require("./routes/webhookRoutes");
 
 const app = express();
 
@@ -14,6 +15,8 @@ app.use(express.json());
 app.use("/api/auth", authRouter);
 
 app.use("/api/repositories", repoRouter);
+
+app.use("/api/webhooks", webhookRouter);
 
 app.get("/", (req, res) => {
   res.send("Welcome to MergeMind API");

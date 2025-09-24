@@ -44,9 +44,12 @@ const repoSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    updatedAt: {
+    lastPushedAt: {
       type: Date,
       default: Date.now,
+    },
+    lastPrActivity: {
+      type: Date,
     },
   },
   {
