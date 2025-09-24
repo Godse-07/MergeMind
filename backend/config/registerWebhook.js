@@ -24,7 +24,7 @@ const registerWebhook = async (repoFullName, accessToken) => {
         active: true,
         events: ["push", "pull_request", "repository"],
         config: {
-          url: `${process.env.BACKEND_URL}/webhooks/github`,
+          url: `${process.env.BACKEND_URL}/api/webhooks/github`,
           content_type: "json",
           secret: process.env.GITHUB_WEBHOOK_SECRET,
         },
