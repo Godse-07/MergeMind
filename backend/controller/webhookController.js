@@ -1,6 +1,8 @@
 const crypto = require("crypto");
 const Repo = require("../model/Repo");
 const Push = require("../model/Push");
+const User = require("../model/User");
+const axios = require("axios");
 const { formatToReadable } = require("../config/dateFunction");
 const Pull = require("../model/Pull");
 
@@ -110,4 +112,99 @@ const githubWebhookController = async (req, res) => {
   }
 };
 
-module.exports = { githubWebhookController };
+const registerNewWebhook = async (req, res) => {
+  try {
+    const { repoId } = req.params;
+    let repo = await Repo.findOne({ githubId: Number(repoId) });
+
+    if (!repo) {
+      const user = await User.findOne({ githubConnected: true }); 
+      if (!user || !user.githubToken) {
+        return res.status(400).json({ message: "GitHub token not found" });
+      }
+
+      const repoData = await axios.get(
+        `https://api.github.com/repositories/${repoId}`,
+        {
+          headers: {
+            Authorization: `token ${user.githubToken}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+        }
+      );
+
+      const repoInfo = repoData.data;
+
+      repo = new Repo({
+        user: user._id,
+        githubId: repoInfo.id,
+        name: repoInfo.name,
+        fullName: repoInfo.full_name,
+        htmlUrl: repoInfo.html_url,
+        private: repoInfo.private,
+        description: repoInfo.description,
+        language: repoInfo.language,
+        forksCount: repoInfo.forks_count,
+        stargazersCount: repoInfo.stargazers_count,
+        watchersCount: repoInfo.watchers_count,
+      });
+
+      await repo.save();
+    }
+
+    const user = await User.findById(repo.user);
+    if (!user || !user.githubToken) {
+      return res.status(400).json({ message: "GitHub token not found for user" });
+    }
+
+    const webhookUrl = `${process.env.BACKEND_URL}/api/webhooks/github`;
+
+    // Check if webhook already exists
+    const existingHooks = await axios.get(
+      `https://api.github.com/repos/${repo.fullName}/hooks`,
+      {
+        headers: {
+          Authorization: `token ${user.githubToken}`,
+          Accept: "application/vnd.github+json",
+        },
+      }
+    );
+
+    const webhookExists = existingHooks.data.some(
+      (hook) => hook.config.url === webhookUrl
+    );
+
+    if (webhookExists) {
+      return res.status(400).json({ message: "Webhook already registered for this repository" });
+    }
+
+    // Register webhook
+    const response = await axios.post(
+      `https://api.github.com/repos/${repo.fullName}/hooks`,
+      {
+        name: "web",
+        active: true,
+        events: ["push", "pull_request"],
+        config: {
+          url: webhookUrl,
+          content_type: "json",
+          secret: process.env.GITHUB_WEBHOOK_SECRET,
+        },
+      },
+      {
+        headers: {
+          Authorization: `token ${user.githubToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/vnd.github+json",
+        },
+      }
+    );
+
+    return res.json({ success: true, webhook: response.data });
+  } catch (err) {
+    console.error("❌ Error registering webhook:", err.response?.data || err.message);
+    return res.status(500).json({ message: "Failed to register webhook" });
+  }
+};
+
+module.exports = { githubWebhookController, registerNewWebhook };

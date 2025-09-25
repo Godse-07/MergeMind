@@ -1,8 +1,9 @@
 const mongoose = require("mongoose");
 const { formatToReadable } = require("../config/dateFunction");
 
-const pushSchema = new mongoose.Schema({
-     repo: {
+const pushSchema = new mongoose.Schema(
+  {
+    repo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Repo",
       required: true,
@@ -19,7 +20,7 @@ const pushSchema = new mongoose.Schema({
   {
     timestamps: true,
   }
-)
+);
 
 const Push = mongoose.model("Push", pushSchema);
 

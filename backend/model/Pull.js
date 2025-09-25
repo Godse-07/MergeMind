@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
 const { formatToReadable } = require("../config/dateFunction");
 
-
-const pullSchema = new mongoose.Schema({
+const pullSchema = new mongoose.Schema(
+  {
     repo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Repo",
@@ -15,18 +15,21 @@ const pullSchema = new mongoose.Schema({
       avatar: { type: String },
       profile: { type: String },
     },
-    
+
     actions: [
-        {
-            action: { type: String },
-            timestamp: { type: String, default: () => formatToReadable(new Date()) },
-        }
+      {
+        action: { type: String },
+        timestamp: {
+          type: String,
+          default: () => formatToReadable(new Date()),
+        },
+      },
     ],
-},
-    {
-        timestamps: true,
-    }
-)
+  },
+  {
+    timestamps: true,
+  }
+);
 
 const Pull = mongoose.model("Pull", pullSchema);
 

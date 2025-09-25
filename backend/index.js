@@ -5,6 +5,7 @@ const mongoConnection = require("./config/db");
 const authRouter = require("./routes/authRoutes");
 const repoRouter = require("./routes/repoRoutes");
 const webhookRouter = require("./routes/webhookRoutes");
+const prRouter = require("./routes/prRoutes");
 
 const app = express();
 
@@ -17,6 +18,8 @@ app.use("/api/auth", authRouter);
 app.use("/api/repositories", repoRouter);
 
 app.use("/api/webhooks", webhookRouter);
+
+app.use("/api/pr", prRouter)
 
 app.get("/", (req, res) => {
   res.send("Welcome to MergeMind API");
