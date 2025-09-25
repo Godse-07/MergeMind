@@ -52,6 +52,15 @@ const repoSchema = new mongoose.Schema(
     lastPrActivity: {
       type: String,
     },
+    lastPushedBy: {
+      username: { type: String },
+      email: { type: String },
+    },
+    lastPrBy: {
+      username: { type: String },
+      avatar: { type: String },
+      profile: { type: String },
+    },
   },
   {
     timestamps: true,

@@ -1,6 +1,8 @@
 const crypto = require("crypto");
 const Repo = require("../model/Repo");
+const Push = require("../model/Push");
 const { formatToReadable } = require("../config/dateFunction");
+const Pull = require("../model/Pull");
 
 const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
 
@@ -11,7 +13,6 @@ const verifySignature = (req) => {
   const hmac = crypto.createHmac("sha256", GITHUB_WEBHOOK_SECRET);
   const digest =
     "sha256=" + hmac.update(JSON.stringify(req.body)).digest("hex");
-
   return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
 };
 
@@ -27,41 +28,79 @@ const githubWebhookController = async (req, res) => {
     console.log("📢 GitHub Event:", event);
     console.log("📦 Repo:", payload.repository?.full_name);
 
-    let updateData = {};
+    // Find repo
+    const repo = await Repo.findOne({ githubId: payload.repository.id });
+
+    if (!repo) {
+      return res.status(404).json({ message: "Repo not found" });
+    }
 
     if (event === "push") {
-      console.log("📌 Push to branch:", payload.ref);
-      updateData.lastPushedAt = formatToReadable(
-        payload.head_commit?.timestamp || payload.repository.pushed_at
-      );
+      const pushData = {
+        repo: repo._id,
+        user: {
+          username:
+            payload.head_commit?.committer?.username ||
+            payload.head_commit?.committer?.name,
+          email: payload.head_commit?.committer?.email,
+        },
+        branch: payload.ref,
+        commitId: payload.head_commit?.id,
+        message: payload.head_commit?.message,
+        timestamp: formatToReadable(
+          payload.head_commit?.timestamp || payload.repository.pushed_at
+        ),
+      };
+
+      await Push.create(pushData);
+
+      // Update last pushed in repo
+      repo.lastPushedAt = pushData.timestamp;
+      repo.lastPushedBy = pushData.user;
+      await repo.save();
+
+      console.log("✅ Push saved:", pushData);
     }
 
     if (event === "pull_request") {
-      console.log("🔀 PR Action:", payload.action);
-      updateData.lastPrActivity = formatToReadable(
-        payload.pull_request.updated_at || new Date().toISOString()
-      );
-    }
+      // Try to find existing PR
+      let pr = await Pull.findOne({
+        repo: repo._id,
+        prNumber: payload.pull_request.number,
+      });
 
-    if (event === "repository") {
-      updateData = {
-        ...updateData,
-        name: payload.repository.name,
-        fullName: payload.repository.full_name,
-        private: payload.repository.private,
-        description: payload.repository.description,
-        language: payload.repository.language,
+      const actionEntry = {
+        action: payload.action,
+        timestamp: formatToReadable(
+          payload.pull_request.updated_at || new Date().toISOString()
+        ),
       };
-    }
 
-    if (Object.keys(updateData).length > 0) {
-      const updated = await Repo.findOneAndUpdate(
-        { githubId: payload.repository.id },
-        { $set: updateData },
-        { new: true } // return updated document
-      );
+      if (!pr) {
+        // New PR
+        pr = await Pull.create({
+          repo: repo._id,
+          prNumber: payload.pull_request.number,
+          title: payload.pull_request.title,
+          user: {
+            username: payload.pull_request.user.login,
+            avatar: payload.pull_request.user.avatar_url,
+            profile: payload.pull_request.user.html_url,
+          },
+          actions: [actionEntry],
+        });
+      } else {
+        // Existing PR → add new action
+        pr.actions.push(actionEntry);
+        await pr.save();
+      }
 
-      console.log("✅ Repo updated:", updated?.fullName, updateData);
+      // Update last PR activity in repo
+      repo.lastPrActivity = actionEntry.timestamp;
+      repo.lastPrBy = pr.user;
+      await repo.save();
+
+      console.log("✅ PR updated:", pr);
     }
 
     res.status(200).json({ success: true });
