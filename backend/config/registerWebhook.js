@@ -9,7 +9,7 @@ const registerWebhook = async (repoFullName, accessToken) => {
     );
 
     const webhookExists = existingHooks.some(
-      (hook) => hook.config.url === `https://isidioid-elle-really.ngrok-free.dev/webhooks/github`
+      (hook) => hook.config.url === `${process.env.BACKEND_URL}/webhooks/github`
     );
 
     if (webhookExists) {
