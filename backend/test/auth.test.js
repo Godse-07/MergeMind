@@ -61,4 +61,72 @@ describe("AUTH API end point testing", () => {
   });
 
   // login tests
+
+  it('should login a user successfully',async () => {
+    await request(app)
+    .post("/api/auth/signup")
+    .send({
+      fullName: "Test1",
+      email: "Test1@gmail.com",
+      password: "Test1",
+    });
+
+    const res = await request(app)
+    .post("/api/auth/login")
+    .send({
+      email: "Test1@gmail.com",
+      password: "Test1",
+    })
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe("Login successful");
+  });
+
+  it("should not login with wrong password", async () => {
+    await request(app).post("/api/auth/signup").send({
+      fullName: "Test User",
+      email: "wrongpass@gmail.com",
+      password: "correct123",
+    });
+
+    const res = await request(app).post("/api/auth/login").send({
+      email: "wrongpass@gmail.com",
+      password: "wrong123",
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toBe("Invalid credentials");
+  });
+
+  it("should not login with non-existent email", async () => {
+    const res = await request(app).post("/api/auth/login").send({
+      email: "doesnotexist@gmail.com",
+      password: "password123",
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toBe("User not found");
+  });
+  
+  it('should fail when fields are missing',async () => {
+    const res = await request(app)
+    .post("/api/auth/login")
+    .send({
+      email: "",
+      password: "",
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toBe("Please provide email and password");
+  });
+
+  // logout
+
+  it("should logout successfully", async () => {
+    const res = await request(app).get("/api/auth/logout");
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe("Logout successful");
+  });
+
+
 });

@@ -14,7 +14,7 @@ const loginController = async (req, res) => {
     if (!email || !password) {
       return res
         .status(400)
-        .json({ message: "Please provide userName and password" });
+        .json({ message: "Please provide email and password" });
     }
 
     const user = await User.findOne({ email });
