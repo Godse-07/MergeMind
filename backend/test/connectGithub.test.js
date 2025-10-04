@@ -7,10 +7,8 @@ const { MongoMemoryServer } = require("mongodb-memory-server");
 const axios = require("axios");
 const jwt = require("jsonwebtoken");
 
-// Mock axios globally
 jest.mock("axios");
 
-// Mock the registerWebhook module to prevent actual webhook registration
 jest.mock("../config/registerWebhook", () => ({
   registerWebhook: jest.fn().mockResolvedValue(true),
 }));
@@ -51,10 +49,20 @@ describe("GitHub Connect API", () => {
       { expiresIn: "7d" }
     );
 
+    //  Mock GitHub's token exchange API:
+    // Real API: POST https://github.com/login/oauth/access_token
+    // Purpose: Exchange the `code` for an `access_token`
     axios.post.mockResolvedValueOnce({
       data: { access_token: "fake-token" },
     });
 
+    //  Mock GitHub's user profile API:
+    // Real API: GET https://api.github.com/user
+    // Purpose: Retrieve the authenticated user's GitHub profile
+    // 
+    //  Mock GitHub's repositories API:
+    // Real API: GET https://api.github.com/user/repos?visibility=all&per_page=100
+    // Purpose: Retrieve all repositories for that user
     axios.get
       .mockResolvedValueOnce({
         data: { 
@@ -87,11 +95,13 @@ describe("GitHub Connect API", () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.message).toBe("GitHub connected successfully");
 
+    // Verify user is updated correctly
     const updatedUser = await User.findById(user._id);
     expect(updatedUser.githubConnected).toBe(true);
     expect(updatedUser.githubToken).toBe("fake-token");
     expect(updatedUser.profilePicture).toBe("http://fake-avatar.com/me.png");
 
+    // Verify repository is saved in DB
     const savedRepo = await Repo.findOne({ githubId: 123 });
     expect(savedRepo).not.toBeNull();
     expect(savedRepo.name).toBe("test-repo");
@@ -132,6 +142,8 @@ describe("GitHub Connect API", () => {
       { expiresIn: "7d" }
     );
 
+    // Real API: POST https://github.com/login/oauth/access_token
+    // Purpose: This mock simulates a failed token exchange (no token returned)
     axios.post.mockResolvedValueOnce({
       data: {},
     });
