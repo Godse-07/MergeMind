@@ -150,14 +150,15 @@ describe("PR analysis", () => {
       githubToken: "fake-token",
     });
 
-    let repo = await Repo.create({
+    const repo = await Repo.create({
       user: user._id,
       githubId: 999,
       name: "TestRepo",
       fullName: "ai/TestRepo",
     });
 
-    repo = await repo.populate("user");
+    // ✅ Keep original repo reference; don’t reassign after populate
+    await repo.populate("user");
 
     const pull = await Pull.create({
       repo: repo._id,
@@ -217,7 +218,7 @@ describe("PR analysis", () => {
     getGeminiModel.mockReturnValue({ generateContent: mockGenerateContent });
 
     const res = await request(app)
-      .post(`/api/pr/${repo.githubId}/analyze/${pull.prNumber}`)
+      .post(`/api/pr/${repo.githubId}/prs/${pull.prNumber}/analyze`)
       .set("x-user-id", user._id.toString());
 
     expect(res.statusCode).toBe(200);
@@ -225,3 +226,4 @@ describe("PR analysis", () => {
     expect(res.body.analysis.score).toBe(85);
   });
 });
+
