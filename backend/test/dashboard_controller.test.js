@@ -2,10 +2,10 @@ const mongoose = require("mongoose");
 const request = require("supertest");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 const jwt = require("jsonwebtoken");
-const User = require("../model/User");
 const Repo = require("../model/Repo");
 const PRAnalysis = require("../model/PRAnalysis");
 const app = require("../app");
+const User = require("../model/User");
 
 jest.mock("../middleware/isLoggedIn", () => (req, res, next) => {
   req.user = {
@@ -29,9 +29,11 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
-  await User.deleteMany({});
-  await Repo.deleteMany({});
-  await PRAnalysis.deleteMany({});
+  if (mongoose.connection.readyState === 1) {
+    await User.deleteMany({});
+    await Repo.deleteMany({});
+    await PRAnalysis.deleteMany({});
+  }
 });
 
 describe("get dashboard details of a user", () => {
@@ -100,5 +102,31 @@ describe("get dashboard details of a user", () => {
     expect(res.body.stats.totalRepositories).toBe(3);
     expect(res.body.stats.prsAnalyzedThisWeek).toBe(2);
     expect(res.body.stats.averagePRScore).toBe(85.0);
+  });
+
+  it("Should throw error (while fetching dashboard stats)", async () => {
+    const user = await User.create({
+      fullName: "test1",
+      email: "test1@gmail.com",
+      password: "test1",
+    });
+
+    await mongoose.disconnect();
+
+    const token = jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+      },
+      process.env.JWT_SECRET
+    );
+
+    const res = await request(app)
+      .get("/api/dashboard/stats")
+      .set("Cookie", `token=${token}`)
+      .set("x-user-id", user._id.toString());
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body.message).toBe("Unable to fetch dashboard stats");
   });
 });

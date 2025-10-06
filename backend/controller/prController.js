@@ -151,7 +151,7 @@ ${JSON.stringify(prData, null, 2)}
     }
 
     // Find Pull document in DB
-    const pull = await Pull.findOne({ repo: repo._id, prNumber });
+    const pull = await Pull.findOne({ repo: repo._id, prNumber: Number(prNumber) });
     if (!pull) return res.status(404).json({ message: "PR not found in DB" });
 
     // Upsert: update existing analysis or create if missing
