@@ -157,7 +157,6 @@ describe("PR analysis", () => {
       fullName: "ai/TestRepo",
     });
 
-    // ✅ Keep original repo reference; don’t reassign after populate
     await repo.populate("user");
 
     const pull = await Pull.create({
@@ -225,5 +224,65 @@ describe("PR analysis", () => {
     expect(res.body.success).toBe(true);
     expect(res.body.analysis.score).toBe(85);
   });
-});
 
+  it("Should not find the repo", async () => {
+    const user = await User.create({
+      fullName: "AI Tester",
+      email: "ai@test.com",
+      password: "pass123",
+      githubToken: "fake-token",
+    });
+
+    const repo = await Repo.create({
+      user: user._id,
+      githubId: 999,
+      name: "TestRepo",
+      fullName: "ai/TestRepo",
+    });
+
+    await repo.populate("user");
+
+    const pull = await Pull.create({
+      repo: repo._id,
+      prNumber: 10,
+      title: "Add new feature",
+    });
+
+    const res = await request(app)
+      .post(`/api/pr/10/prs/${pull.prNumber}/analyze`)
+      .set("x-user-id", user._id.toString());
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body.message).toBe("Repo not found");
+  });
+
+  it("Show Github not connected", async () => {
+    const user = await User.create({
+      fullName: "tester",
+      email: "test1@gmail.com",
+      password: "pass123",
+    });
+
+    const repo = await Repo.create({
+      user: user._id,
+      githubId: 999,
+      name: "TestRepo",
+      fullName: "ai/TestRepo",
+    });
+
+    await repo.populate("user");
+
+    const pull = await Pull.create({
+      repo: repo._id,
+      prNumber: 10,
+      title: "Add new feature",
+    });
+
+    const res = await request(app)
+      .post(`/api/pr/${repo.githubId}/prs/${pull.prNumber}/analyze`)
+      .set("x-user-id", user._id.toString());
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toBe("GitHub not connected");
+  });
+});
