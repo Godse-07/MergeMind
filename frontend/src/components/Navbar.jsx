@@ -8,6 +8,8 @@ const Navbar = () => {
 
   const { user } = useContext(UserContext);
 
+  console.log("Navbar user:", user);
+
   return (
     <div className="h-20 w-full border-b-2 flex items-center justify-around">
       <div className="flex items-center gap-2">

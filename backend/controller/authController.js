@@ -41,6 +41,8 @@ const loginController = async (req, res) => {
         id: user._id,
         fullName: user.fullName,
         email: user.email,
+        githubConnected: user.githubConnected,
+        profilePicture: user.profilePicture,
       },
     });
   } catch (error) {

@@ -3,10 +3,15 @@ import { Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
 import { login } from "../lib/api";
 import { useNavigate } from "react-router";
+import { useContext } from "react";
+import { UserContext } from "../context/UserContext";
 
 const LoginPage = () => {
-
   const navigate = useNavigate();
+
+  const [loading, setLoading] = useState(false);
+
+  const { setUser } = useContext(UserContext);
 
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setfromData] = useState({
@@ -30,40 +35,41 @@ const LoginPage = () => {
       return;
     }
 
-    // check if email is valid
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       toast.error("Please enter a valid email");
       return;
     }
 
-    // check if password is valid
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters");
       return;
     }
 
+    setLoading(true);
+
     try {
-      // make login api call
       const res = await login(formData);
-      console.log(res);
       toast.success("Login successful");
-      setfromData({
-        email: "",
-        password: "",
-      })
-      if(res.user.githubConnected){
-        navigate("/");
-      }else{
-        navigate("/connect-github");
-      }
+
+      setfromData({ email: "", password: "" });
+
+      setUser(res.user);
+
+      setTimeout(() => {
+        if (res.user.githubConnected) {
+          navigate("/");
+        } else {
+          navigate("/connect-github");
+        }
+      }, 0);
     } catch (err) {
       console.log(err);
-      if (err.response.data.message) {
-        toast.error(err.response.data.message);
-      } else {
-        toast.error("Something went wrong. Please try again.");
-      }
+      toast.error(
+        err.response?.data?.message || "Something went wrong. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -135,14 +141,41 @@ const LoginPage = () => {
             type="submit"
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 font-semibold shadow-md"
             onClick={formSubmit}
+            disabled={loading}
           >
-            Login
+            {loading ? (
+              <svg
+                className="animate-spin h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 010 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z"
+                ></path>
+              </svg>
+            ) : (
+              "Login"
+            )}
           </button>
 
           {/* Signup Link */}
           <p className="text-center text-sm text-gray-600 mt-2">
             Don’t have an account?{" "}
-            <a href="/signup" className="text-blue-600 hover:underline font-medium">
+            <a
+              href="/signup"
+              className="text-blue-600 hover:underline font-medium"
+            >
               Sign up
             </a>
           </p>

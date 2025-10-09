@@ -27,3 +27,8 @@ export const githubOAth = async () => {
     window.location.href = githubAuthUrl;
 
 }
+
+export const logOut = async () => {
+    const response = await axiosInstance.get("/auth/logout");
+    return response.data;
+}
