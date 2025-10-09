@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cookieParser = require("cookie-parser");
-const mongoConnection = require("./config/db");
+const cors = require("cors");
 const authRouter = require("./routes/authRoutes");
 const repoRouter = require("./routes/repoRoutes");
 const webhookRouter = require("./routes/webhookRoutes");
@@ -9,6 +9,11 @@ const prRouter = require("./routes/prRoutes");
 const dashboardRouter = require("./routes/dashboardRoutes");
 
 const app = express();
+
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true,
+}));
 
 app.use(cookieParser());
 

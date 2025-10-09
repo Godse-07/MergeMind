@@ -186,7 +186,7 @@ const connectGithubController = async (req, res) => {
         }
     }
 
-    res.status(200).json({ message: "GitHub connected successfully" });
+    res.redirect(`${process.env.FRONTEND_URL}/`);
   } catch (error) {
     console.log("Error in connectGithub controller", error);
     res

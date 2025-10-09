@@ -1,21 +1,22 @@
 import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
-import { login } from "../lib/api";
+import { signUp } from "../lib/api";
 import { useNavigate } from "react-router";
 
-const LoginPage = () => {
+const SignupPage = () => {
 
-  const navigate = useNavigate();
+    const navigate = useNavigate();
 
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setfromData] = useState({
+  const [formData, setFormData] = useState({
+    fullName: "",
     email: "",
     password: "",
   });
 
   const handleChange = (e) => {
-    setfromData({ ...formData, [e.target.name]: e.target.value });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const togglePassword = () => {
@@ -24,41 +25,36 @@ const LoginPage = () => {
 
   const formSubmit = async (e) => {
     e.preventDefault();
-    const { email, password } = formData;
-    if (!email || !password) {
+    const { fullName, email, password } = formData;
+
+    if (!fullName || !email || !password) {
       toast.error("Please fill all the fields");
       return;
     }
 
-    // check if email is valid
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       toast.error("Please enter a valid email");
       return;
     }
 
-    // check if password is valid
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters");
       return;
     }
 
-    try {
-      // make login api call
-      const res = await login(formData);
-      console.log(res);
-      toast.success("Login successful");
-      setfromData({
-        email: "",
-        password: "",
-      })
-      if(res.user.githubConnected){
-        navigate("/");
-      }else{
-        navigate("/connect-github");
-      }
-    } catch (err) {
-      console.log(err);
+    try{
+        const res = await signUp(formData);
+        console.log(res);
+        toast.success("Signup successful");
+        setFormData({
+          fullName: "",
+          email: "",
+          password: "",
+        })
+        navigate("/login");
+    }catch(err){
+        console.log(err);
       if (err.response.data.message) {
         toast.error(err.response.data.message);
       } else {
@@ -78,13 +74,29 @@ const LoginPage = () => {
       {/* Card */}
       <div className="w-full max-w-3xl bg-white/80 backdrop-blur-md border border-gray-200 rounded-2xl shadow-xl p-8 flex flex-col md:flex-row items-center gap-8">
         {/* Left Side - Form */}
-        <form className="flex flex-col gap-5 w-full md:w-1/2">
+        <form onSubmit={formSubmit} className="flex flex-col gap-5 w-full md:w-1/2">
           <h2 className="text-3xl font-semibold text-gray-800 text-center mb-2">
-            Welcome Back 👋
+            Create Account ✨
           </h2>
           <p className="text-center text-gray-500 mb-4">
-            Login to access your MergeMind dashboard
+            Join MergeMind and start building smarter!
           </p>
+
+          {/* Full Name */}
+          <div className="flex flex-col">
+            <label htmlFor="fullName" className="mb-2 font-semibold text-gray-700">
+              Full Name
+            </label>
+            <input
+              type="text"
+              id="fullName"
+              name="fullName"
+              placeholder="Enter your full name"
+              value={formData.fullName}
+              onChange={handleChange}
+              className="border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+            />
+          </div>
 
           {/* Email */}
           <div className="flex flex-col">
@@ -92,34 +104,31 @@ const LoginPage = () => {
               Email
             </label>
             <input
-              name="email"
               type="email"
               id="email"
+              name="email"
               placeholder="Enter your email"
-              className="border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+              value={formData.email}
               onChange={handleChange}
+              className="border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
           </div>
 
           {/* Password with Eye Toggle */}
           <div className="flex flex-col relative">
-            <label
-              htmlFor="password"
-              className="mb-2 font-semibold text-gray-700"
-            >
+            <label htmlFor="password" className="mb-2 font-semibold text-gray-700">
               Password
             </label>
             <div className="relative">
               <input
-                name="password"
                 type={showPassword ? "text" : "password"}
                 id="password"
+                name="password"
                 placeholder="Enter your password"
-                className="w-full border border-gray-300 px-3 py-2 rounded-lg pr-10 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                value={formData.password}
                 onChange={handleChange}
+                className="w-full border border-gray-300 px-3 py-2 rounded-lg pr-10 focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
-
-              {/* Eye Icon */}
               <button
                 type="button"
                 onClick={togglePassword}
@@ -134,16 +143,15 @@ const LoginPage = () => {
           <button
             type="submit"
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 font-semibold shadow-md"
-            onClick={formSubmit}
           >
-            Login
+            Sign Up
           </button>
 
-          {/* Signup Link */}
+          {/* Login Link */}
           <p className="text-center text-sm text-gray-600 mt-2">
-            Don’t have an account?{" "}
-            <a href="/signup" className="text-blue-600 hover:underline font-medium">
-              Sign up
+            Already have an account?{" "}
+            <a href="/login" className="text-blue-600 hover:underline font-medium">
+              Login
             </a>
           </p>
         </form>
@@ -160,9 +168,8 @@ const LoginPage = () => {
           />
           <p className="text-center text-gray-700">
             Welcome to{" "}
-            <span className="font-semibold text-blue-600">MergeMind</span>!{" "}
-            <br />
-            Let’s build something amazing together 🚀
+            <span className="font-semibold text-blue-600">MergeMind</span>! <br />
+            Start your journey with us 🚀
           </p>
         </div>
       </div>
@@ -170,4 +177,4 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+export default SignupPage;
