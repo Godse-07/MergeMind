@@ -5,9 +5,9 @@ import { signUp } from "../lib/api";
 import { useNavigate } from "react-router";
 
 const SignupPage = () => {
+  const navigate = useNavigate();
 
-    const navigate = useNavigate();
-
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -43,23 +43,27 @@ const SignupPage = () => {
       return;
     }
 
-    try{
-        const res = await signUp(formData);
-        console.log(res);
-        toast.success("Signup successful");
-        setFormData({
-          fullName: "",
-          email: "",
-          password: "",
-        })
-        navigate("/login");
-    }catch(err){
-        console.log(err);
-      if (err.response.data.message) {
+    setLoading(true);
+
+    try {
+      const res = await signUp(formData);
+      console.log(res);
+      toast.success("Signup successful!");
+      setFormData({
+        fullName: "",
+        email: "",
+        password: "",
+      });
+      navigate("/login");
+    } catch (err) {
+      console.log(err);
+      if (err.response?.data?.message) {
         toast.error(err.response.data.message);
       } else {
         toast.error("Something went wrong. Please try again.");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -74,7 +78,10 @@ const SignupPage = () => {
       {/* Card */}
       <div className="w-full max-w-3xl bg-white/80 backdrop-blur-md border border-gray-200 rounded-2xl shadow-xl p-8 flex flex-col md:flex-row items-center gap-8">
         {/* Left Side - Form */}
-        <form onSubmit={formSubmit} className="flex flex-col gap-5 w-full md:w-1/2">
+        <form
+          onSubmit={formSubmit}
+          className="flex flex-col gap-5 w-full md:w-1/2"
+        >
           <h2 className="text-3xl font-semibold text-gray-800 text-center mb-2">
             Create Account ✨
           </h2>
@@ -84,7 +91,10 @@ const SignupPage = () => {
 
           {/* Full Name */}
           <div className="flex flex-col">
-            <label htmlFor="fullName" className="mb-2 font-semibold text-gray-700">
+            <label
+              htmlFor="fullName"
+              className="mb-2 font-semibold text-gray-700"
+            >
               Full Name
             </label>
             <input
@@ -116,7 +126,10 @@ const SignupPage = () => {
 
           {/* Password with Eye Toggle */}
           <div className="flex flex-col relative">
-            <label htmlFor="password" className="mb-2 font-semibold text-gray-700">
+            <label
+              htmlFor="password"
+              className="mb-2 font-semibold text-gray-700"
+            >
               Password
             </label>
             <div className="relative">
@@ -139,18 +152,48 @@ const SignupPage = () => {
             </div>
           </div>
 
-          {/* Submit Button */}
+          {/* Submit Button with Loading Spinner */}
           <button
             type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 font-semibold shadow-md"
+            disabled={loading}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 font-semibold shadow-md flex justify-center items-center gap-2"
           >
-            Sign Up
+            {loading ? (
+              <>
+                <svg
+                  className="animate-spin h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 010 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z"
+                  ></path>
+                </svg>
+                <span>Signing up...</span>
+              </>
+            ) : (
+              "Sign Up"
+            )}
           </button>
 
           {/* Login Link */}
           <p className="text-center text-sm text-gray-600 mt-2">
             Already have an account?{" "}
-            <a href="/login" className="text-blue-600 hover:underline font-medium">
+            <a
+              href="/login"
+              className="text-blue-600 hover:underline font-medium"
+            >
               Login
             </a>
           </p>
@@ -168,7 +211,8 @@ const SignupPage = () => {
           />
           <p className="text-center text-gray-700">
             Welcome to{" "}
-            <span className="font-semibold text-blue-600">MergeMind</span>! <br />
+            <span className="font-semibold text-blue-600">MergeMind</span>!{" "}
+            <br />
             Start your journey with us 🚀
           </p>
         </div>

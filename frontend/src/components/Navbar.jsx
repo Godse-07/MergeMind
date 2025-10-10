@@ -5,21 +5,29 @@ import ProfilePicture from "./ProfilePicture";
 
 const Navbar = () => {
   const navigate = useNavigate();
-
   const { user } = useContext(UserContext);
 
-  console.log("Navbar user:", user);
-
   return (
-    <div className="h-20 w-full border-b-2 flex items-center justify-around">
-      <div className="flex items-center gap-2">
+    <div
+      className="fixed top-0 left-0 w-full h-20 
+      bg-white/70 backdrop-blur-md border-b border-gray-200
+      flex items-center justify-around z-50 shadow-sm transition-all duration-300"
+    >
+      <div
+        className="flex items-center gap-2 cursor-pointer"
+        onClick={() => navigate("/")}
+      >
         <img src="/PR_icon.png" alt="logo" className="h-12 w-12" />
-        <p className="font-bold text-xl">MergeMind</p>
+        <p className="font-bold text-xl text-gray-800">MergeMind</p>
       </div>
-      <div className="flex items-center gap-16">
-        <p>Features</p>
-        <p>Docs</p>
+
+      <div className="flex items-center gap-16 text-gray-700 font-medium">
+        <p className="hover:text-blue-600 transition cursor-pointer">
+          Features
+        </p>
+        <p className="hover:text-blue-600 transition cursor-pointer">Docs</p>
       </div>
+
       {user ? (
         <ProfilePicture profilePicture={user.profilePicture} />
       ) : (

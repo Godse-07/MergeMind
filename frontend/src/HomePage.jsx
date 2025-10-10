@@ -6,7 +6,9 @@ const HomePage = () => {
   return (
     <div className='flex-grow'>
         <Navbar />
-        <HeroSection />
+        <div className='pt-20'>
+          <HeroSection />
+        </div>
     </div>
   )
 }
