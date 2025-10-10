@@ -3,6 +3,7 @@ import HomePage from "./HomePage";
 import Loginpage from "./pages/Loginpage";
 import SignupPage from "./pages/SignupPage";
 import GithubConnectPage from "./pages/GithubConnectPage";
+import DashboardPage from "./pages/DashboardPage";
 
 const App = () => {
   return (
@@ -12,6 +13,7 @@ const App = () => {
         <Route path="/login" element={<Loginpage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/connect-github" element={<GithubConnectPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
       </Routes>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { UserContext } from "../context/UserContext";
 import ProfilePicture from "./ProfilePicture";
 
@@ -22,6 +22,12 @@ const Navbar = () => {
       </div>
 
       <div className="flex items-center gap-16 text-gray-700 font-medium">
+        <Link
+          to="/dashboard"
+          className="hover:text-blue-500 transition cursor-pointer"
+        >
+          Dashboard
+        </Link>
         <p className="hover:text-blue-600 transition cursor-pointer">
           Features
         </p>

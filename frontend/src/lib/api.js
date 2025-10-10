@@ -32,3 +32,8 @@ export const logOut = async () => {
     const response = await axiosInstance.get("/auth/logout");
     return response.data;
 }
+
+export const getDashboardData = async () => {
+    const response = await axiosInstance.get("/dashboard/stats");
+    return response.data;
+}
