@@ -18,7 +18,7 @@ export const signUp = async (signupData) => {
 export const githubOAth = async () => {
     const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
     const redirectUri = import.meta.env.VITE_GITHUB_REDIRECT_URI;
-    const scope = "repo,read:user";
+    const scope = "repo,read:user,admin:repo_hook";
 
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
         redirectUri
@@ -35,5 +35,10 @@ export const logOut = async () => {
 
 export const getDashboardData = async () => {
     const response = await axiosInstance.get("/dashboard/stats");
+    return response.data;
+}
+
+export const getRepoList = async () => {
+    const response = await axiosInstance.get("/repositories/repos");
     return response.data;
 }
