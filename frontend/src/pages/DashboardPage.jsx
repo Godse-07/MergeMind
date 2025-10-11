@@ -12,13 +12,15 @@ import {
   ExternalLink,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 const DashboardPage = () => {
   const { user } = useContext(UserContext);
   const [dashboardStats, setDashboardStats] = useState(null);
   const [Repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const navigate = useNavigate();
 
   const name = user?.fullName || "User";
 
@@ -135,7 +137,13 @@ const DashboardPage = () => {
                 Repositories
               </span>
             </div>
-            <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+            <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              onClick={
+                () => {
+                  navigate("/connect-repository")
+                }
+              }
+            >
               <Plus className="w-4 h-4" />
               <span>Connect Repository</span>
             </button>

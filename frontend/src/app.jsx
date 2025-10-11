@@ -4,6 +4,7 @@ import Loginpage from "./pages/Loginpage";
 import SignupPage from "./pages/SignupPage";
 import GithubConnectPage from "./pages/GithubConnectPage";
 import DashboardPage from "./pages/DashboardPage";
+import ConnectRepository from "./pages/ConnectRepository";
 
 const App = () => {
   return (
@@ -14,6 +15,7 @@ const App = () => {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/connect-github" element={<GithubConnectPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/connect-repository" element={<ConnectRepository />} />
       </Routes>
     </div>
   );
