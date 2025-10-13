@@ -10,6 +10,7 @@ import {
   Plus,
   Clock,
   ExternalLink,
+  RefreshCcw,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router";
@@ -45,7 +46,9 @@ const DashboardPage = () => {
         console.log("Repositories:", res);
         setRepos(res.repos);
       } catch (err) {
-        toast.error(err.response?.data?.message || "Failed to load repositories");
+        toast.error(
+          err.response?.data?.message || "Failed to load repositories"
+        );
       }
     };
     fetchRepos();
@@ -137,16 +140,26 @@ const DashboardPage = () => {
                 Repositories
               </span>
             </div>
-            <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              onClick={
-                () => {
-                  navigate("/connect-repository")
-                }
-              }
-            >
-              <Plus className="w-4 h-4" />
-              <span>Connect Repository</span>
-            </button>
+            <div className="flex items-center justify-center gap-5">
+              <button
+                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={() => {
+                  window.location.reload();
+                }}
+              >
+                <RefreshCcw className="w-4 h-4" />
+                Refresh
+              </button>
+              <button
+                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={() => {
+                  navigate("/connect-repository");
+                }}
+              >
+                <Plus className="w-4 h-4" />
+                <span>Connect Repository</span>
+              </button>
+            </div>
           </div>
 
           {/* Repo List */}
@@ -157,7 +170,8 @@ const DashboardPage = () => {
                 No repositories connected
               </h3>
               <p className="text-gray-600 mb-6">
-                Connect your GitHub repositories to start analyzing pull requests
+                Connect your GitHub repositories to start analyzing pull
+                requests
               </p>
               <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
                 Connect Repository
@@ -189,7 +203,9 @@ const DashboardPage = () => {
                     <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
-                        <span>Last pushed: {formatDate(repo.lastPushedAt)}</span>
+                        <span>
+                          Last pushed: {formatDate(repo.lastPushedAt)}
+                        </span>
                       </div>
                       {repo.language && (
                         <div className="flex items-center gap-1">
@@ -221,6 +237,11 @@ const DashboardPage = () => {
                     <Link
                       to={`/repository/${repo.name}`}
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      onClick={
+                        () => {
+                          localStorage.setItem(`${repo.name}-id`, repo.githubId)
+                        }
+                      }
                     >
                       Analyze PRs
                     </Link>

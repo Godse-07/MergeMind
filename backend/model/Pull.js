@@ -25,6 +25,11 @@ const pullSchema = new mongoose.Schema(
         },
       },
     ],
+    state: {
+      type: String,
+      enum: ["open", "closed", "merged"],
+      default: "open",
+    },
   },
   {
     timestamps: true,

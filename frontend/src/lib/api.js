@@ -46,3 +46,8 @@ export const connectRepoManually = async ({ repoId }) => {
     const response = await axiosInstance.post(`/webhooks/register/${repoId}`);
     return response.data;
 }
+
+export const repositoryPr = async (repoId) => {
+  const response = await axiosInstance.get(`/pr/${repoId}/prs`);
+  return response.data;
+}

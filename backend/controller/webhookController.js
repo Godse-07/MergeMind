@@ -11,11 +11,9 @@ const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
 const verifySignature = (req) => {
   const signature = req.headers["x-hub-signature-256"];
   if (!signature) return false;
-
   const hmac = crypto.createHmac("sha256", GITHUB_WEBHOOK_SECRET);
   const digest =
     "sha256=" + hmac.update(JSON.stringify(req.body)).digest("hex");
-
   try {
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
   } catch {
@@ -25,21 +23,12 @@ const verifySignature = (req) => {
 
 const githubWebhookController = async (req, res) => {
   try {
-    if (!verifySignature(req)) {
+    if (!verifySignature(req))
       return res.status(401).json({ message: "Invalid signature" });
-    }
-
     const event = req.headers["x-github-event"];
     const payload = req.body;
-
-    console.log("📢 GitHub Event:", event);
-    console.log("📦 Repository:", payload.repository?.full_name);
-
     const repo = await Repo.findOne({ githubId: payload.repository.id });
-    if (!repo) {
-      console.warn("⚠️ Repo not found for webhook:", payload.repository?.id);
-      return res.status(404).json({ message: "Repo not found" });
-    }
+    if (!repo) return res.status(404).json({ message: "Repo not found" });
 
     if (event === "push") {
       const headCommit = payload.head_commit || {};
@@ -57,20 +46,17 @@ const githubWebhookController = async (req, res) => {
           headCommit.timestamp || payload.repository.pushed_at
         ),
       };
-
       await Push.create(pushData);
-
       repo.lastPushedAt = pushData.timestamp;
       repo.lastPushedBy = pushData.user;
       await repo.save();
-
-      console.log("✅ Push saved:", pushData);
     }
 
     if (event === "pull_request") {
       const prPayload = payload.pull_request;
+      const prAction = payload.action;
       const actionEntry = {
-        action: payload.action,
+        action: prAction,
         timestamp: formatToReadable(
           prPayload.updated_at || new Date().toISOString()
         ),
@@ -80,8 +66,13 @@ const githubWebhookController = async (req, res) => {
         repo: repo._id,
         prNumber: prPayload.number,
       });
-
       if (!pr) {
+        let initialState =
+          prAction === "closed"
+            ? prPayload.merged
+              ? "merged"
+              : "closed"
+            : "open";
         pr = await Pull.create({
           repo: repo._id,
           prNumber: prPayload.number,
@@ -92,30 +83,28 @@ const githubWebhookController = async (req, res) => {
             profile: prPayload.user.html_url,
           },
           actions: [actionEntry],
+          state: initialState,
         });
       } else {
         pr.actions.push(actionEntry);
+        if (prAction === "closed")
+          pr.state = prPayload.merged ? "merged" : "closed";
+        else if (prAction === "opened" || prAction === "reopened")
+          pr.state = "open";
         await pr.save();
       }
 
       repo.lastPrActivity = actionEntry.timestamp;
       repo.lastPrBy = pr.user;
       await repo.save();
-
-      console.log(
-        `✅ Pull Request #${prPayload.number} updated (${payload.action})`
-      );
     }
 
     if (event === "star") {
       const { action, sender } = payload;
-
-      if (action === "created") {
-        repo.stargazersCount = (repo.stargazersCount || 0) + 1;
-      } else if (action === "deleted" && repo.stargazersCount > 0) {
-        repo.stargazersCount -= 1;
-      }
-
+      repo.stargazersCount =
+        action === "created"
+          ? (repo.stargazersCount || 0) + 1
+          : Math.max((repo.stargazersCount || 1) - 1, 0);
       repo.lastStarredBy = {
         username: sender?.login,
         avatar: sender?.avatar_url,
@@ -123,8 +112,6 @@ const githubWebhookController = async (req, res) => {
       };
       repo.lastStarredAt = formatToReadable(new Date());
       await repo.save();
-
-      console.log(`⭐ Repo ${repo.name} starred/unstarred by ${sender?.login}`);
     }
 
     if (event === "fork") {
@@ -137,13 +124,10 @@ const githubWebhookController = async (req, res) => {
       };
       repo.lastForkedAt = formatToReadable(new Date());
       await repo.save();
-
-      console.log(`🍴 Repo ${repo.name} forked by ${sender?.login}`);
     }
 
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.error("❌ Error in githubWebhookController:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
@@ -151,16 +135,13 @@ const githubWebhookController = async (req, res) => {
 const registerNewWebhook = async (req, res) => {
   try {
     const { repoId } = req.params;
-
     let repo = await Repo.findOne({ githubId: Number(repoId) });
 
     if (!repo) {
       const user = await User.findOne({ githubConnected: true });
-      if (!user?.githubToken) {
+      if (!user?.githubToken)
         return res.status(400).json({ message: "GitHub token not found" });
-      }
-
-      const repoData = await axios.get(
+      const { data: info } = await axios.get(
         `https://api.github.com/repositories/${repoId}`,
         {
           headers: {
@@ -169,9 +150,6 @@ const registerNewWebhook = async (req, res) => {
           },
         }
       );
-
-      const info = repoData.data;
-
       repo = await Repo.create({
         user: user._id,
         githubId: info.id,
@@ -188,14 +166,12 @@ const registerNewWebhook = async (req, res) => {
     }
 
     const user = await User.findById(repo.user);
-    if (!user?.githubToken) {
+    if (!user?.githubToken)
       return res
         .status(400)
         .json({ message: "GitHub token not found for user" });
-    }
 
     const webhookUrl = `${process.env.BACKEND_URL}/api/webhooks/github`;
-
     const { data: hooks } = await axios.get(
       `https://api.github.com/repos/${repo.fullName}/hooks`,
       {
@@ -206,9 +182,8 @@ const registerNewWebhook = async (req, res) => {
       }
     );
 
-    if (hooks.some((h) => h.config.url === webhookUrl)) {
+    if (hooks.some((h) => h.config.url === webhookUrl))
       return res.status(400).json({ message: "Webhook already registered" });
-    }
 
     const { data: webhook } = await axios.post(
       `https://api.github.com/repos/${repo.fullName}/hooks`,
@@ -233,10 +208,6 @@ const registerNewWebhook = async (req, res) => {
 
     return res.json({ success: true, webhook });
   } catch (err) {
-    console.error(
-      "❌ Error registering webhook:",
-      err.response?.data || err.message
-    );
     return res.status(500).json({ message: "Failed to register webhook" });
   }
 };
