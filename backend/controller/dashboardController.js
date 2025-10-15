@@ -18,7 +18,7 @@ const getDashboardStats = async (req, res) => {
     const repoIds = await Repo.find({ user: userId }).distinct("_id");
     const analysis = await PRAnalysis.aggregate([
       { $match: { repo: { $in: repoIds } } },
-      { $group: { _id: null, averageScore: { $avg: "$score" } } }
+      { $group: { _id: null, averageScore: { $avg: "$healthScore" } } }
     ]);
 
     const averagePRScore = analysis.length ? analysis[0].averageScore : 0;

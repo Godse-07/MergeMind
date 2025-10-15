@@ -6,6 +6,7 @@ import GithubConnectPage from "./pages/GithubConnectPage";
 import DashboardPage from "./pages/DashboardPage";
 import ConnectRepository from "./pages/ConnectRepository";
 import RepositoryPage from "./pages/RepositoryPage";
+import PrAnalysisPage from "./pages/PrAnalysisPage";
 
 const App = () => {
   return (
@@ -18,6 +19,7 @@ const App = () => {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/connect-repository" element={<ConnectRepository />} />
         <Route path="/repository/:repoName" element={<RepositoryPage />} />
+        <Route path="/repository/:repoName/pr/:prNumber" element={<PrAnalysisPage />} />
       </Routes>
     </div>
   );

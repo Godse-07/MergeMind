@@ -30,6 +30,11 @@ const pullSchema = new mongoose.Schema(
       enum: ["open", "closed", "merged"],
       default: "open",
     },
+    fileStats: {
+      totalFilesChanged: { type: Number, default: 0 },
+      totalAdditions: { type: Number, default: 0 },
+      totalDeletions: { type: Number, default: 0 },
+    },
   },
   {
     timestamps: true,

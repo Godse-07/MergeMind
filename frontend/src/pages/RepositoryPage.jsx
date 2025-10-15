@@ -12,6 +12,9 @@ import {
   User,
   ChevronRight,
   RefreshCcw,
+  File,
+  Plus,
+  Minus,
 } from "lucide-react";
 
 const RepositoryPage = () => {
@@ -212,8 +215,35 @@ const RepositoryPage = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        {pr.title}
+                        <div className="flex flex-col gap-3">
+                          {/* PR Title */}
+                          <span className="font-medium text-gray-900">
+                            {pr.title}
+                          </span>
+
+                          {/* File Stats */}
+                          <div className="flex items-center gap-4 mt-1 text-xs">
+                            {/* Total Files Changed */}
+                            <span className="flex items-center text-gray-500">
+                              <File className="w-4 h-4 mr-1" />
+                              {pr.fileStats?.totalFilesChanged || 0} files
+                            </span>
+
+                            {/* Additions */}
+                            <span className="flex items-center text-green-600">
+                              <Plus className="w-3 h-3" />
+                              {pr.fileStats?.totalAdditions || 0}
+                            </span>
+
+                            {/* Deletions */}
+                            <span className="flex items-center text-red-600">
+                              <Minus className="w-3 h-3" />
+                              {pr.fileStats?.totalDeletions || 0}
+                            </span>
+                          </div>
+                        </div>
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 flex items-center gap-2">
                         <User className="h-4 w-4 text-gray-400" />
                         {pr.user?.username || "Unknown"}

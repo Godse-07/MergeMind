@@ -62,6 +62,35 @@ const githubWebhookController = async (req, res) => {
         ),
       };
 
+      const user = await User.findById(repo.user);
+
+      let fileStats = {
+        totalFilesChanged: prPayload.changed_files || 0,
+        totalAdditions: prPayload.additions || 0,
+        totalDeletions: prPayload.deletions || 0,
+      };
+
+      if (
+        (!fileStats.totalFilesChanged || prAction === "closed") &&
+        user?.githubToken
+      ) {
+        try {
+          const { data: prInfo } = await axios.get(prPayload.url, {
+            headers: {
+              Authorization: `token ${user.githubToken}`,
+              Accept: "application/vnd.github.v3+json",
+            },
+          });
+          fileStats = {
+            totalFilesChanged: prInfo.changed_files || 0,
+            totalAdditions: prInfo.additions || 0,
+            totalDeletions: prInfo.deletions || 0,
+          };
+        } catch (err) {
+          console.error("❌ Failed to fetch PR file stats:", err.message);
+        }
+      }
+
       let pr = await Pull.findOne({
         repo: repo._id,
         prNumber: prPayload.number,
@@ -84,9 +113,11 @@ const githubWebhookController = async (req, res) => {
           },
           actions: [actionEntry],
           state: initialState,
+          fileStats
         });
       } else {
         pr.actions.push(actionEntry);
+        pr.fileStats = fileStats;
         if (prAction === "closed")
           pr.state = prPayload.merged ? "merged" : "closed";
         else if (prAction === "opened" || prAction === "reopened")

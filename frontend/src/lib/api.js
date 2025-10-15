@@ -51,3 +51,8 @@ export const repositoryPr = async (repoId) => {
   const response = await axiosInstance.get(`/pr/${repoId}/prs`);
   return response.data;
 }
+
+export const getPRanalysis = async (repoId, prNumber) => {
+  const reqsponse = await axiosInstance.post(`/pr/${repoId}/prs/${prNumber}/analyze`);
+  return reqsponse.data;
+}

@@ -5,7 +5,6 @@ const Repo = require("../model/Repo");
 const User = require("../model/User");
 const { githubRequest } = require("../utils/githubApi");
 
-
 const getRepoPRs = async (req, res) => {
   try {
     const { repoId } = req.params;
@@ -22,7 +21,6 @@ const getRepoPRs = async (req, res) => {
     res.status(500).json({ message: "Unable to fetch pull requests" });
   }
 };
-
 
 const getPRDetails = async (req, res) => {
   try {
@@ -46,7 +44,9 @@ const triggerPRAnalysis = async (req, res) => {
     const { repoId, prNumber } = req.params;
 
     // Find repository
-    const repo = await Repo.findOne({ githubId: Number(repoId) }).populate("user");
+    const repo = await Repo.findOne({ githubId: Number(repoId) }).populate(
+      "user"
+    );
     if (!repo) return res.status(404).json({ message: "Repo not found" });
 
     const user = await User.findById(repo.user);
@@ -55,10 +55,6 @@ const triggerPRAnalysis = async (req, res) => {
     }
 
     const [owner, repoName] = repo.fullName.split("/");
-
-    console.log("Owner:", owner);
-    console.log("RepoName:", repoName);
-    console.log("PR Number:", prNumber);
 
     // Fetch PR details from GitHub
     const prInfo = await githubRequest(
@@ -80,6 +76,9 @@ const triggerPRAnalysis = async (req, res) => {
     const prData = {
       title: prInfo.title,
       author: prInfo.user.login,
+      created: prInfo.created_at,
+      status:
+        prInfo.state === "closed" && prInfo.merged_at ? "merged" : prInfo.state,
       additions: prInfo.additions,
       deletions: prInfo.deletions,
       changedFiles: prInfo.changed_files,
@@ -95,22 +94,33 @@ const triggerPRAnalysis = async (req, res) => {
     // Get Gemini model
     const model = getGeminiModel();
 
-    // Gemini prompt (strict JSON requirement)
+    // Gemini prompt
     const prompt = `
 You are a PR reviewer. Analyze this pull request and return a valid JSON object with the following schema ONLY:
 
 {
-  "score": number,
+  "healthScore": number,
   "filesChanged": number,
   "linesAdded": number,
   "linesDeleted": number,
   "commits": number,
   "suggestions": [
     {
-      "severity": "Error" | "Warning" | "Info",
+      "severity": "error" | "warning" | "info",
       "description": string,
       "file": string,
       "suggestedFix": string
+    }
+  ],
+  "comments": [
+    {
+      "author": string,
+      "content": string,
+      "timestamp": string,
+      "type": "comment" | "suggestion" | "approval",
+      "reactions": [
+        { "emoji": string, "count": number }
+      ]
     }
   ]
 }
@@ -121,45 +131,53 @@ ${JSON.stringify(prData, null, 2)}
 
     // Call Gemini
     const result = await model.generateContent(prompt);
-
     const rawResponse = await result.response.text();
-    console.log("Gemini raw output:", rawResponse);
 
     let parsed;
     try {
       let cleanedOutput = rawResponse.trim();
-      cleanedOutput = cleanedOutput.replace(/^```json\s*/, "").replace(/```$/, "").trim();
-
+      cleanedOutput = cleanedOutput
+        .replace(/^```json\s*/, "")
+        .replace(/```$/, "")
+        .trim();
       parsed = JSON.parse(cleanedOutput);
     } catch (err) {
       console.error("Failed to parse Gemini output as JSON:", err);
       parsed = {
-        score: 0,
+        healthScore: 0,
         filesChanged: prData.changedFiles,
         linesAdded: prData.additions,
         linesDeleted: prData.deletions,
         commits: prData.commits,
         suggestions: [
           {
-            severity: "Info",
+            severity: "info",
             description: "Could not parse Gemini output",
             file: "",
             suggestedFix: rawResponse,
           },
         ],
+        comments: [],
       };
     }
 
     // Find Pull document in DB
-    const pull = await Pull.findOne({ repo: repo._id, prNumber: Number(prNumber) });
+    const pull = await Pull.findOne({
+      repo: repo._id,
+      prNumber: Number(prNumber),
+    });
     if (!pull) return res.status(404).json({ message: "PR not found in DB" });
 
-    // Upsert: update existing analysis or create if missing
+    // Upsert PR analysis
     const analysis = await PRAnalysis.findOneAndUpdate(
-      { pull: pull._id }, // search by pull ID
+      { pull: pull._id },
       {
         pull: pull._id,
         repo: repo._id,
+        title: prData.title,
+        author: prData.author,
+        created: prData.created,
+        status: prData.status,
         ...parsed,
         analyzedAt: new Date().toISOString(),
       },
@@ -173,9 +191,8 @@ ${JSON.stringify(prData, null, 2)}
   }
 };
 
-
 module.exports = {
-    getRepoPRs,
-    getPRDetails,
-    triggerPRAnalysis
-}
+  getRepoPRs,
+  getPRDetails,
+  triggerPRAnalysis,
+};
