@@ -64,7 +64,6 @@ const LoginPage = () => {
         }
       }, 0);
     } catch (err) {
-      console.log(err);
       toast.error(
         err.response?.data?.message || "Something went wrong. Please try again."
       );

@@ -30,8 +30,8 @@ const DashboardPage = () => {
       try {
         const res = await getDashboardData();
         setDashboardStats(res.stats);
-      } catch (err) {
-        console.log("Error fetching dashboard data:", err);
+      } catch {
+        toast.error("Failed to load dashboard stats");
       } finally {
         setLoading(false);
       }
@@ -43,7 +43,6 @@ const DashboardPage = () => {
     const fetchRepos = async () => {
       try {
         const res = await getRepoList();
-        console.log("Repositories:", res);
         setRepos(res.repos);
       } catch (err) {
         toast.error(

@@ -13,7 +13,7 @@ const registerWebhook = async (repoFullName, accessToken) => {
     );
 
     if (webhookExists) {
-      console.log(`✅ Webhook already exists for ${repoFullName}`);
+      console.log(`✅ Webhook already exists`);
       return;
     }
 
@@ -32,10 +32,10 @@ const registerWebhook = async (repoFullName, accessToken) => {
       { headers: { Authorization: `token ${accessToken}` } }
     );
 
-    console.log(`✅ Webhook created for ${repoFullName}`);
+    console.log(`✅ Webhook created`);
   } catch (err) {
     console.log(
-      `❌ Failed to add webhook for ${repoFullName}`,
+      `❌ Failed to add webhook`,
       err.response?.data || err.message
     );
   }

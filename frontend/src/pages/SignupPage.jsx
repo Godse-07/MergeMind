@@ -46,8 +46,7 @@ const SignupPage = () => {
     setLoading(true);
 
     try {
-      const res = await signUp(formData);
-      console.log(res);
+      await signUp(formData);
       toast.success("Signup successful!");
       setFormData({
         fullName: "",
@@ -56,7 +55,6 @@ const SignupPage = () => {
       });
       navigate("/login");
     } catch (err) {
-      console.log(err);
       if (err.response?.data?.message) {
         toast.error(err.response.data.message);
       } else {

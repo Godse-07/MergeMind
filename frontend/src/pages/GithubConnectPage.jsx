@@ -9,8 +9,7 @@ const GithubConnectPage = () => {
     const handleLogin = async () => {
         try {
             githubOAth();
-        }catch(err){
-            console.log(err);
+        }catch {
             toast.error("Something went wrong. Please try again.");
         }
     }

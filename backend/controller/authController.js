@@ -184,7 +184,7 @@ const connectGithubController = async (req, res) => {
         try{
             await registerWebhook(repo.full_name, accessToken);
         }catch(err){
-            console.log(`❌ Failed to add webhook for ${repo.full_name}`, err.message);
+            console.log(`❌ Failed to add webhook`, err.message);
         }
     }
 

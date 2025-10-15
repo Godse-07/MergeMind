@@ -11,8 +11,7 @@ export const UserProvider = ({ children }) => {
     try {
       const res = await currUser();
       setUser(res.user);
-    } catch (err) {
-      console.log("Error fetching user:", err);
+    } catch {
       setUser(null);
     } finally {
       setLoading(false);
