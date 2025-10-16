@@ -5,7 +5,7 @@ const mongoConnection = async () => {
     const dbUrl = process.env.mongoUrl;
     
     try {
-        await mongoose.connect(`${dbUrl}/mergemind`)
+        await mongoose.connect(`${dbUrl}/mergeMindDB?retryWrites=true&w=majority&appName=Cluster0`)
         .then(() => {
             console.log("🚀🚀🚀 connected to mongoDB");
         })
