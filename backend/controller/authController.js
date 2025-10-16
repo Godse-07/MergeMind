@@ -33,7 +33,9 @@ const loginController = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.cookie("token", token);
+    res.cookie("token", token, {
+      sameSite: "none"
+    });
 
     res.status(200).json({
       message: "Login successful",
@@ -82,7 +84,9 @@ const signupController = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.cookie("token", token);
+    res.cookie("token", token, {
+      sameSite: "none"
+    });
 
     res.status(201).json({
       message: "User created successfully",
