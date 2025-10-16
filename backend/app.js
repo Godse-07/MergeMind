@@ -15,6 +15,7 @@ app.set("trust proxy", 1);
 app.use(cors({
   origin: process.env.FRONTEND_URL,
   credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use(cookieParser());
