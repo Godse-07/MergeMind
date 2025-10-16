@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import { UserContext } from "../context/UserContext";
-import { getDashboardData, getRepoList } from "../lib/api";
+import { disConnectGithub, getDashboardData, getRepoList } from "../lib/api";
 import {
   FolderGit2,
   GitPullRequest,
@@ -11,6 +11,8 @@ import {
   Clock,
   ExternalLink,
   RefreshCcw,
+  CircleOff,
+  Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router";
@@ -20,6 +22,7 @@ const DashboardPage = () => {
   const [dashboardStats, setDashboardStats] = useState(null);
   const [Repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [disconnectLoading, setDisconnectLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -79,6 +82,20 @@ const DashboardPage = () => {
       bg: "bg-purple-50 text-purple-600",
     },
   ];
+
+  const handleDisconnectGithub = async () => {
+    try {
+      setDisconnectLoading(true);
+      const res = await disConnectGithub();
+      toast.success(res.message);
+      setRepos([]);
+      setDashboardStats(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message);
+    } finally {
+      setDisconnectLoading(false);
+    }
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -140,6 +157,20 @@ const DashboardPage = () => {
               </span>
             </div>
             <div className="flex items-center justify-center gap-5">
+              {Repos.length > 0 && (
+                <button
+                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  onClick={handleDisconnectGithub}
+                  disabled={disconnectLoading}
+                >
+                  {disconnectLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CircleOff className="w-4 h-4" />
+                  )}
+                  {disconnectLoading ? "Disconnecting..." : "Disconnect GitHub"}
+                </button>
+              )}
               <button
                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                 onClick={() => {
@@ -172,7 +203,12 @@ const DashboardPage = () => {
                 Connect your GitHub repositories to start analyzing pull
                 requests
               </p>
-              <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+              <button
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                onClick={() => {
+                  navigate("/connect-github");
+                }}
+              >
                 Connect Repository
               </button>
             </div>
@@ -236,11 +272,9 @@ const DashboardPage = () => {
                     <Link
                       to={`/repository/${repo.name}`}
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                      onClick={
-                        () => {
-                          localStorage.setItem(`${repo.name}-id`, repo.githubId)
-                        }
-                      }
+                      onClick={() => {
+                        localStorage.setItem(`${repo.name}-id`, repo.githubId);
+                      }}
                     >
                       Analyze PRs
                     </Link>

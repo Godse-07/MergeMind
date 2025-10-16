@@ -197,9 +197,61 @@ const connectGithubController = async (req, res) => {
   }
 };
 
+const disconnectGithubController = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+
+    if (!user.githubConnected) {
+      return res.status(400).json({ message: "GitHub is not connected" });
+    }
+
+    const accessToken = user.githubToken;
+
+    const repos = await Repo.find({ user: userId });
+    for (const repo of repos) {
+      try {
+        const hooks = await axios.get(
+          `https://api.github.com/repos/${repo.fullName}/hooks`,
+          {
+            headers: { Authorization: `token ${accessToken}` },
+          }
+        );
+
+        for (const hook of hooks.data) {
+          if (hook.config.url.includes(process.env.BACKEND_URL)) {
+            await axios.delete(
+              `https://api.github.com/repos/${repo.fullName}/hooks/${hook.id}`,
+              {
+                headers: { Authorization: `token ${accessToken}` },
+              }
+            );
+          }
+        }
+      } catch (err) {
+        console.log(`❌ Failed to remove webhook for ${repo.fullName}`, err.message);
+      }
+    }
+
+    user.githubConnected = false;
+    user.githubToken = null;
+    await user.save();
+
+    await Repo.deleteMany({ user: userId });
+
+    res.status(200).json({ message: "GitHub disconnected successfully" });
+  } catch (error) {
+    console.log("Error in disconnectGithubController", error);
+    res.status(500).json({ message: "Error disconnecting GitHub" });
+  }
+};
+
+
+
 module.exports = {
   loginController,
   signupController,
   logoutController,
   connectGithubController,
+  disconnectGithubController,
 };

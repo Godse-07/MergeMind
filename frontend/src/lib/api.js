@@ -56,3 +56,8 @@ export const getPRanalysis = async (repoId, prNumber) => {
   const reqsponse = await axiosInstance.post(`/pr/${repoId}/prs/${prNumber}/analyze`);
   return reqsponse.data;
 }
+
+export const disConnectGithub = async () => {
+  const response = await axiosInstance.get("/auth/disconnectGithub");
+  return response.data;
+}
