@@ -34,7 +34,10 @@ const loginController = async (req, res) => {
     );
 
     res.cookie("token", token, {
-      sameSite: "none"
+      sameSite: "none",
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.status(200).json({
@@ -85,7 +88,10 @@ const signupController = async (req, res) => {
     );
 
     res.cookie("token", token, {
-      sameSite: "none"
+      sameSite: "none",
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.status(201).json({
