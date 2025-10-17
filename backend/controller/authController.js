@@ -34,9 +34,10 @@ const loginController = async (req, res) => {
     );
 
     res.cookie("token", token, {
-      sameSite: "none",
-      secure: true,
       httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      domain: ".vercel.app",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -88,9 +89,10 @@ const signupController = async (req, res) => {
     );
 
     res.cookie("token", token, {
-      sameSite: "none",
-      secure: true,
       httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      domain: ".vercel.app",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -110,7 +112,13 @@ const signupController = async (req, res) => {
 
 const logoutController = (req, res) => {
   try {
-    res.clearCookie("token");
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      domain: ".vercel.app",
+    });
+
     res.status(200).json({ message: "Logout successful" });
   } catch (error) {
     res.status(500).json({ message: "Facing issue while logout" });
@@ -190,12 +198,12 @@ const connectGithubController = async (req, res) => {
 
     await Promise.all(repoPromises);
 
-    for(const repo of repos) {
-        try{
-            await registerWebhook(repo.full_name, accessToken);
-        }catch(err){
-            console.log(`❌ Failed to add webhook`, err.message);
-        }
+    for (const repo of repos) {
+      try {
+        await registerWebhook(repo.full_name, accessToken);
+      } catch (err) {
+        console.log(`❌ Failed to add webhook`, err.message);
+      }
     }
 
     res.redirect(`${process.env.FRONTEND_URL}/`);
@@ -239,7 +247,10 @@ const disconnectGithubController = async (req, res) => {
           }
         }
       } catch (err) {
-        console.log(`❌ Failed to remove webhook for ${repo.fullName}`, err.message);
+        console.log(
+          `❌ Failed to remove webhook for ${repo.fullName}`,
+          err.message
+        );
       }
     }
 
@@ -255,8 +266,6 @@ const disconnectGithubController = async (req, res) => {
     res.status(500).json({ message: "Error disconnecting GitHub" });
   }
 };
-
-
 
 module.exports = {
   loginController,
