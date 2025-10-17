@@ -7,12 +7,16 @@ export const currUser = async () => {
 
 export const login = async (loginData) => {
   const response = await axiosInstance.post("/auth/login", loginData);
-  return response.data;
+  const { token, user } = response.data;
+  localStorage.setItem("token", token); 
+  return user;
 };
 
 export const signUp = async (signupData) => {
   const response = await axiosInstance.post("/auth/signup", signupData);
-  return response.data;
+  const { token, user } = response.data;
+  localStorage.setItem("token", token);
+  return user;
 };
 
 export const githubOAth = async () => {
@@ -28,6 +32,7 @@ export const githubOAth = async () => {
 };
 
 export const logOut = async () => {
+  localStorage.removeItem("token");
   const response = await axiosInstance.get("/auth/logout");
   return response.data;
 };

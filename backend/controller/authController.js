@@ -33,16 +33,9 @@ const loginController = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: "/",
-    });
-
     res.status(200).json({
       message: "Login successful",
+      token,
       user: {
         id: user._id,
         fullName: user.fullName,
@@ -88,16 +81,9 @@ const signupController = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: "/",
-    });
-
     res.status(201).json({
       message: "User created successfully",
+      token,
       user: {
         id: newUser._id,
         fullName: newUser.fullName,
@@ -112,12 +98,6 @@ const signupController = async (req, res) => {
 
 const logoutController = (req, res) => {
   try {
-    res.clearCookie("token", {
-      secure: true,
-      sameSite: "none",
-      path: "/",
-    });
-
     res.status(200).json({ message: "Logout successful" });
   } catch (error) {
     res.status(500).json({ message: "Facing issue while logout" });
