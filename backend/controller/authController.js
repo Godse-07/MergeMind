@@ -106,13 +106,25 @@ const logoutController = (req, res) => {
 
 const connectGithubController = async (req, res) => {
   try {
-    const { code } = req.query;
-    const userId = req.user.id;
-    if (!code) {
-      return res.status(400).json({ message: "Code not provided" });
+    const { code, state } = req.query;
+
+    if (!code || !state) {
+      return res.status(400).json({ message: "Code or state not provided" });
     }
 
-    // Exchange code for access token
+    let decoded;
+    try {
+      decoded = jwt.verify(state, process.env.JWT_SECRET);
+    } catch (err) {
+      return res
+        .status(401)
+        .json({ message: "Invalid or expired state token" });
+    }
+
+    const userId = decoded.id;
+    const currUser = await User.findById(userId);
+    if (!currUser) return res.status(404).json({ message: "User not found" });
+
     const tokenResponse = await axios.post(
       "https://github.com/login/oauth/access_token",
       {
@@ -120,28 +132,20 @@ const connectGithubController = async (req, res) => {
         client_secret: process.env.GITHUB_CLIENT_SECRET,
         code,
       },
-      {
-        headers: {
-          Accept: "application/json",
-        },
-      }
+      { headers: { Accept: "application/json" } }
     );
 
     const accessToken = tokenResponse.data.access_token;
-
-    if (!accessToken) {
+    if (!accessToken)
       return res
         .status(400)
         .json({ message: "Failed to retrieve GitHub access token" });
-    }
 
     const profileResponse = await axios.get("https://api.github.com/user", {
       headers: { Authorization: `token ${accessToken}` },
     });
-
     const githubProfile = profileResponse.data;
 
-    const currUser = await User.findById(userId);
     currUser.githubConnected = true;
     currUser.profilePicture = githubProfile.avatar_url;
     currUser.githubToken = accessToken;
@@ -154,8 +158,8 @@ const connectGithubController = async (req, res) => {
 
     const repos = reposResponse.data;
 
-    const repoPromises = repos.map((repo) => {
-      return Repo.findOneAndUpdate(
+    const repoPromises = repos.map((repo) =>
+      Repo.findOneAndUpdate(
         { githubId: repo.id },
         {
           user: currUser._id,
@@ -172,8 +176,8 @@ const connectGithubController = async (req, res) => {
           updatedAt: repo.updated_at,
         },
         { upsert: true, new: true }
-      );
-    });
+      )
+    );
 
     await Promise.all(repoPromises);
 

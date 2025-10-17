@@ -20,13 +20,14 @@ export const signUp = async (signupData) => {
 };
 
 export const githubOAth = async () => {
+  const token = localStorage.getItem("token"); 
   const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
   const redirectUri = import.meta.env.VITE_GITHUB_REDIRECT_URI;
   const scope = "repo,read:user,admin:repo_hook";
 
   const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
     redirectUri
-  )}&scope=${encodeURIComponent(scope)}`;
+  )}&scope=${encodeURIComponent(scope)}&state=${token}`;
 
   window.location.href = githubAuthUrl;
 };

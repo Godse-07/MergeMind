@@ -16,7 +16,7 @@ authRouter.post("/signup", signupController);
 
 authRouter.get("/logout", logoutController);
 
-authRouter.get("/connectGithub/callback", isLoggedIn, connectGithubController);
+authRouter.get("/connectGithub/callback", connectGithubController);
 
 authRouter.get("/disconnectGithub", isLoggedIn, disconnectGithubController);
 
