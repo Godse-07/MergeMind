@@ -37,8 +37,8 @@ const loginController = async (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      domain: ".vercel.app",
       maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/"
     });
 
     res.status(200).json({
@@ -92,8 +92,8 @@ const signupController = async (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      domain: ".vercel.app",
       maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/"
     });
 
     res.status(201).json({
@@ -116,7 +116,7 @@ const logoutController = (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      domain: ".vercel.app",
+      path: "/"
     });
 
     res.status(200).json({ message: "Logout successful" });
