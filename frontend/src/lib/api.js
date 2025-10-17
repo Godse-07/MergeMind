@@ -7,16 +7,16 @@ export const currUser = async () => {
 
 export const login = async (loginData) => {
   const response = await axiosInstance.post("/auth/login", loginData);
-  const { token, user } = response.data;
+  const token = response.data.token;
   localStorage.setItem("token", token); 
-  return user;
+  return response.data;
 };
 
 export const signUp = async (signupData) => {
   const response = await axiosInstance.post("/auth/signup", signupData);
-  const { token, user } = response.data;
+  const token = response.data.token;
   localStorage.setItem("token", token);
-  return user;
+  return response.data;
 };
 
 export const githubOAth = async () => {
@@ -58,8 +58,8 @@ export const repositoryPr = async (repoId) => {
 }
 
 export const getPRanalysis = async (repoId, prNumber) => {
-  const reqsponse = await axiosInstance.post(`/pr/${repoId}/prs/${prNumber}/analyze`);
-  return reqsponse.data;
+  const response = await axiosInstance.post(`/pr/${repoId}/prs/${prNumber}/analyze`);
+  return response.data;
 }
 
 export const disConnectGithub = async () => {
