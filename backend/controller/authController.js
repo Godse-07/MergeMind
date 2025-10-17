@@ -34,10 +34,11 @@ const loginController = async (req, res) => {
     );
 
     res.cookie("token", token, {
+      httpOnly: true,
       secure: true,
       sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: "/"
+      path: "/",
     });
 
     res.status(200).json({
@@ -88,10 +89,11 @@ const signupController = async (req, res) => {
     );
 
     res.cookie("token", token, {
+      httpOnly: true,
       secure: true,
       sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: "/"
+      path: "/",
     });
 
     res.status(201).json({
@@ -113,7 +115,7 @@ const logoutController = (req, res) => {
     res.clearCookie("token", {
       secure: true,
       sameSite: "none",
-      path: "/"
+      path: "/",
     });
 
     res.status(200).json({ message: "Logout successful" });
