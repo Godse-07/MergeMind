@@ -10,19 +10,12 @@ const dashboardRouter = require("./routes/dashboardRoutes");
 
 const app = express();
 
-app.set("trust proxy", 1);
-
-app.use(cors({
-  origin: process.env.FRONTEND_URL,
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
-
-app.options(/.*/, cors({
-  origin: process.env.FRONTEND_URL,
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+  })
+);
 
 app.use(cookieParser());
 
@@ -34,7 +27,7 @@ app.use("/api/repositories", repoRouter);
 
 app.use("/api/webhooks", webhookRouter);
 
-app.use("/api/pr", prRouter)
+app.use("/api/pr", prRouter);
 
 app.use("/api/dashboard", dashboardRouter);
 
