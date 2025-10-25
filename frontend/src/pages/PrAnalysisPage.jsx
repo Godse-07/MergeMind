@@ -35,7 +35,7 @@ export default function PRAnalysisPage() {
   const effectRan = useRef(false);
 
   useEffect(() => {
-    if(effectRan.current === false){
+    if (effectRan.current === false) {
       fetchAnalysis();
       effectRan.current = true;
     }
@@ -65,11 +65,52 @@ export default function PRAnalysisPage() {
   };
 
   const handleExport = () => {
-    toast.success("Report exported successfully!");
+    if (!prData) {
+      toast.error("No data to export!");
+      return;
+    }
+
+    const exportData = {
+      title: prData.title,
+      updatedAt: prData.updatedAt,
+      suggestions: prData.suggestions,
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `PR-${prNumber}-analysis.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    toast.success("Report exported as JSON!");
   };
 
-  const handleCopySuggestions = () => {
-    toast.success("Suggestions copied to clipboard!");
+  const handleCopySuggestions = async () => {
+    if (!prData || !prData.suggestions || prData.suggestions.length === 0) {
+      toast.error("No suggestions to copy!");
+      return;
+    }
+
+    const textToCopy = prData.suggestions
+      .map(
+        (s, i) =>
+          `${i + 1}. ${s.description}${s.file ? ` (File: ${s.file})` : ""}${
+            s.suggestedFix ? `\n   Fix: ${s.suggestedFix}` : ""
+          }`
+      )
+      .join("\n\n");
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      toast.success("Suggestions copied to clipboard!");
+    } catch (err) {
+      toast.error("Failed to copy suggestions");
+      console.error(err);
+    }
   };
 
   const getScoreColor = (score) => {
@@ -116,7 +157,7 @@ export default function PRAnalysisPage() {
   }
 
   return (
-    <div>
+    <div className="flex-grow">
       <Navbar />
       <div className="pt-24 w-[90%] max-w-7xl mx-auto">
         <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-6">
@@ -308,7 +349,7 @@ export default function PRAnalysisPage() {
         )}
 
         {/* Actions */}
-        <div className="mt-6 flex space-x-4">
+        <div className="mt-6 flex space-x-4 mb-12">
           <button
             onClick={handleRefresh}
             className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"

@@ -7,6 +7,8 @@ import DashboardPage from "./pages/DashboardPage";
 import ConnectRepository from "./pages/ConnectRepository";
 import RepositoryPage from "./pages/RepositoryPage";
 import PrAnalysisPage from "./pages/PrAnalysisPage";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Docs from "./pages/Docs";
 
 const App = () => {
   return (
@@ -15,11 +17,54 @@ const App = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<Loginpage />} />
         <Route path="/signup" element={<SignupPage />} />
-        <Route path="/connect-github" element={<GithubConnectPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/connect-repository" element={<ConnectRepository />} />
-        <Route path="/repository/:repoName" element={<RepositoryPage />} />
-        <Route path="/repository/:repoName/pr/:prNumber" element={<PrAnalysisPage />} />
+        <Route
+          path="/connect-github"
+          element={
+            <ProtectedRoute>
+              <GithubConnectPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/connect-repository"
+          element={
+            <ProtectedRoute>
+              <ConnectRepository />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/repository/:repoName"
+          element={
+            <ProtectedRoute>
+              <RepositoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/repository/:repoName/pr/:prNumber"
+          element={
+            <ProtectedRoute>
+              <PrAnalysisPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/docs"
+          element={
+            <ProtectedRoute>
+              <Docs />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </div>
   );

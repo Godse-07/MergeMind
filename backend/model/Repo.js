@@ -67,6 +67,25 @@ const repoSchema = new mongoose.Schema(
   }
 );
 
+repoSchema.pre(
+  "deleteOne",
+  { document: true, query: false },
+  async function (next) {
+    try {
+      const repoId = this._id;
+      await Promise.all([
+        mongoose.model("Push").deleteMany({ repo: repoId }),
+        mongoose.model("Pull").deleteMany({ repo: repoId }),
+      ]);
+      console.log(`🧹 Cleaned up Push & Pull data for repo ${this.fullName}`);
+      next();
+    } catch (err) {
+      console.error("Error cleaning up related data:", err);
+      next(err);
+    }
+  }
+);
+
 const Repo = mongoose.model("Repo", repoSchema);
 
 module.exports = Repo;

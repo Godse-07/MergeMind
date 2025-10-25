@@ -28,10 +28,18 @@ const Navbar = () => {
         >
           Dashboard
         </Link>
-        <p className="hover:text-blue-600 transition cursor-pointer">
+        <Link
+          to="/"
+          className="hover:text-blue-500 transition cursor-pointer"
+        >
           Features
-        </p>
-        <p className="hover:text-blue-600 transition cursor-pointer">Docs</p>
+        </Link>
+        <Link
+          to="/docs"
+          className="hover:text-blue-500 transition cursor-pointer"
+        >
+          Docs
+        </Link>
       </div>
 
       {user ? (

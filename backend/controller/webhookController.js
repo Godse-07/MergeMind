@@ -113,7 +113,7 @@ const githubWebhookController = async (req, res) => {
           },
           actions: [actionEntry],
           state: initialState,
-          fileStats
+          fileStats,
         });
       } else {
         pr.actions.push(actionEntry);
@@ -128,6 +128,18 @@ const githubWebhookController = async (req, res) => {
       repo.lastPrActivity = actionEntry.timestamp;
       repo.lastPrBy = pr.user;
       await repo.save();
+    }
+
+    if (event === "repository" && payload.action === "deleted") {
+      await Repo.deleteOne({ githubId: payload.repository.id });
+      await Pull.deleteMany({ repo: repo._id });
+      await Push.deleteMany({ repo: repo._id });
+      console.log(
+        `🗑️ Repository ${payload.repository.full_name} deleted from DB`
+      );
+      return res
+        .status(200)
+        .json({ success: true, message: "Repository deleted" });
     }
 
     if (event === "star") {
@@ -221,7 +233,7 @@ const registerNewWebhook = async (req, res) => {
       {
         name: "web",
         active: true,
-        events: ["push", "pull_request", "star", "fork"],
+        events: ["push", "pull_request", "repository", "star", "fork"],
         config: {
           url: webhookUrl,
           content_type: "json",

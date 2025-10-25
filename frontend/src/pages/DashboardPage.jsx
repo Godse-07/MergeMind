@@ -97,6 +97,23 @@ const DashboardPage = () => {
     }
   };
 
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const [statsRes, reposRes] = await Promise.all([
+          getDashboardData(),
+          getRepoList(),
+        ]);
+        setDashboardStats(statsRes.stats);
+        setRepos(reposRes.repos);
+      } catch (err) {
+        console.error("Auto-refresh failed:", err);
+      }
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
