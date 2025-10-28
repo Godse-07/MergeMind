@@ -96,25 +96,32 @@ const triggerPRAnalysis = async (req, res) => {
 
     // Gemini prompt
     const prompt = `
-You are a PR reviewer. Analyze this pull request and return a valid JSON object with the following schema ONLY:
+You are an expert Senior Software Engineer and PR reviewer. 
+Your task is to analyze this pull request deeply and return a valid JSON object following the schema below. 
+Focus on code quality, architecture, maintainability, and overall development practices.
 
+**Schema (JSON only):**
 {
-  "healthScore": number,
+  "healthScore": number, // 0–100 based on code clarity, modularity, performance, and correctness
   "filesChanged": number,
   "linesAdded": number,
   "linesDeleted": number,
   "commits": number,
+  "summary": string, // concise technical summary of the PR and its overall purpose
+  "keyFindings": [string], // list of the most critical insights or issues found
   "suggestions": [
     {
       "severity": "error" | "warning" | "info",
       "description": string,
       "file": string,
+      "line": number | null,
+      "category": "security" | "performance" | "readability" | "maintainability" | "best_practice",
       "suggestedFix": string
     }
   ],
   "comments": [
     {
-      "author": string,
+      "author": "AI Reviewer",
       "content": string,
       "timestamp": string,
       "type": "comment" | "suggestion" | "approval",
@@ -122,12 +129,27 @@ You are a PR reviewer. Analyze this pull request and return a valid JSON object 
         { "emoji": string, "count": number }
       ]
     }
-  ]
+  ],
+  "metrics": {
+    "testCoverageChange": string, // e.g. "+5%" or "No tests added"
+    "documentationImpact": string, // e.g. "Updated API docs" or "Missing README update"
+    "breakingChanges": boolean
+  }
 }
+
+**Evaluation Criteria:**
+- Review logic correctness, structure, and readability.
+- Check if the code adheres to standard design principles (SOLID, DRY, KISS).
+- Look for code smells, potential bugs, performance bottlenecks, and missing validations.
+- Evaluate whether commits are meaningful and follow good commit practices.
+- Identify missing tests, poor naming, hardcoded values, or unclear logic.
+- Suggest improvements in a concise, actionable, and professional tone.
+
+Return only a valid JSON object, no explanations or text outside of JSON.
 
 PR Data:
 ${JSON.stringify(prData, null, 2)}
-    `;
+`;
 
     // Call Gemini
     const result = await model.generateContent(prompt);
@@ -183,6 +205,30 @@ ${JSON.stringify(prData, null, 2)}
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
+
+    pull.healthScore = parsed.healthScore;
+    await pull.save();
+
+    const pulls = await Pull.find({ repo: repo._id });
+
+    const totalPRs = pulls.length;
+    const analyzedPRs = pulls.filter((p) => p.healthScore !== undefined).length;
+    const avgHealthScore =
+      analyzedPRs > 0
+        ? pulls
+            .filter((p) => p.healthScore !== undefined)
+            .reduce((sum, p) => sum + p.healthScore, 0) / analyzedPRs
+        : 0;
+    const openPRs = pulls.filter((p) => p.state === "open").length;
+
+    repo.stats = {
+      totalPRs,
+      totalAnalyzedPRs: analyzedPRs,
+      openPRs,
+      averageHealthScore: Math.round(avgHealthScore),
+    };
+
+    await repo.save();
 
     res.status(200).json({ success: true, analysis });
   } catch (err) {

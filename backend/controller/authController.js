@@ -209,6 +209,7 @@ const disconnectGithubController = async (req, res) => {
 
     const accessToken = user.githubToken;
 
+    // Remove all webhooks safely
     const repos = await Repo.find({ user: userId });
     for (const repo of repos) {
       try {
@@ -220,7 +221,7 @@ const disconnectGithubController = async (req, res) => {
         );
 
         for (const hook of hooks.data) {
-          if (hook.config.url.includes(process.env.BACKEND_URL)) {
+          if (hook.config?.url?.includes(process.env.BACKEND_URL)) {
             await axios.delete(
               `https://api.github.com/repos/${repo.fullName}/hooks/${hook.id}`,
               {
@@ -241,14 +242,14 @@ const disconnectGithubController = async (req, res) => {
     user.githubToken = null;
     await user.save();
 
-    await Repo.deleteMany({ user: userId });
-
+  
     res.status(200).json({ message: "GitHub disconnected successfully" });
   } catch (error) {
     console.log("Error in disconnectGithubController", error);
     res.status(500).json({ message: "Error disconnecting GitHub" });
   }
 };
+
 
 module.exports = {
   loginController,

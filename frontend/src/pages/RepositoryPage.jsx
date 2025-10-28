@@ -217,7 +217,7 @@ const RepositoryPage = () => {
                       <td className="px-6 py-4 text-sm text-gray-900">
                         <div className="flex flex-col gap-3">
                           {/* PR Title */}
-                          <span className="font-medium text-gray-900">
+                          <span className=" text-[1rem] text-gray-900">
                             {pr.title}
                           </span>
 
@@ -272,6 +272,37 @@ const RepositoryPage = () => {
                         >
                           Analyze
                         </Link>
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex flex-col items-start">
+                          {/* Score Badge */}
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-semibold ${getScoreColor(
+                              pr.healthScore
+                            )}`}
+                          >
+                            {pr.healthScore ? `${pr.healthScore}/100` : "N/A"}
+                          </span>
+
+                          {/* Progress Bar */}
+                          {pr.healthScore !== undefined && (
+                            <div className="w-24 h-2 bg-gray-200 rounded-full mt-2 overflow-hidden">
+                              <div
+                                className={`h-2 rounded-full transition-all duration-500 ${
+                                  pr.healthScore >= 80
+                                    ? "bg-green-500"
+                                    : pr.healthScore >= 60
+                                    ? "bg-amber-500"
+                                    : "bg-red-500"
+                                }`}
+                                style={{
+                                  width: `${Math.min(pr.healthScore, 100)}%`,
+                                }}
+                              ></div>
+                            </div>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

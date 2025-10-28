@@ -61,6 +61,13 @@ const repoSchema = new mongoose.Schema(
       avatar: { type: String },
       profile: { type: String },
     },
+    stats: {
+      averageHealthScore: { type: Number, default: 0 },
+      totalAnalyzedPRs: { type: Number, default: 0 },
+      openPRs: { type: Number, default: 0 },
+      totalPRs: { type: Number, default: 0 },
+      lastAnalyzedAt: { type: String },
+    },
   },
   {
     timestamps: true,

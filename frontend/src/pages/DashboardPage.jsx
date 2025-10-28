@@ -252,7 +252,7 @@ const DashboardPage = () => {
                       )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                    {/* <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
                         <span>
@@ -273,6 +273,69 @@ const DashboardPage = () => {
                         <Activity className="w-4 h-4" />
                         <span>{repo.watchersCount} watchers</span>
                       </div>
+                    </div> */}
+                    <div className="flex flex-col gap-3 text-sm text-gray-600">
+                      {/* Existing details row */}
+                      <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          <span>
+                            Last pushed: {formatDate(repo.lastPushedAt)}
+                          </span>
+                        </div>
+                        {repo.language && (
+                          <div className="flex items-center gap-1">
+                            <span className="h-2 w-2 bg-blue-400 rounded-full"></span>
+                            <span>{repo.language}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4" />
+                          <span>{repo.stargazersCount} stars</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Activity className="w-4 h-4" />
+                          <span>{repo.watchersCount} watchers</span>
+                        </div>
+                      </div>
+
+                      {/* New Repo Stats Section */}
+                      {repo.stats && (
+                        <div className="flex flex-wrap items-center gap-5 mt-2 text-gray-700">
+                          <div className="flex items-center gap-2">
+                            <GitPullRequest className="w-4 h-4 text-green-600" />
+                            <span>
+                              Total PRs:{" "}
+                              <strong>{repo.stats.totalPRs ?? 0}</strong>
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-blue-600" />
+                            <span>
+                              Open PRs:{" "}
+                              <strong>{repo.stats.openPRs ?? 0}</strong>
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Star className="w-4 h-4 text-yellow-500" />
+                            <span>
+                              Avg Health Score:{" "}
+                              <strong>
+                                {repo.stats.averageHealthScore ?? 0}
+                              </strong>
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-purple-500" />
+                            <span>
+                              Analyzed PRs:{" "}
+                              <strong>
+                                {repo.stats.totalAnalyzedPRs ?? 0}
+                              </strong>
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
