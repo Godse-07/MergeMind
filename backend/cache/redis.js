@@ -1,6 +1,7 @@
 const { Redis } = require('ioredis');
+const redisConfig = require('../config/redisConfig');
 
-const redis = new Redis();
+const redis = new Redis(redisConfig);
 
 redis.on("connect", () => {
     console.log("🟢🟢 Connected to Redis");

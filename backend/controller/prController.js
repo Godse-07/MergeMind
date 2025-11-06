@@ -1,3 +1,4 @@
+const redis = require("../cache/redis");
 const getGeminiModel = require("../config/gemini");
 const PRAnalysis = require("../model/PRAnalysis");
 const Pull = require("../model/Pull");
@@ -8,14 +9,25 @@ const { githubRequest } = require("../utils/githubApi");
 const getRepoPRs = async (req, res) => {
   try {
     const { repoId } = req.params;
+    const cacheKey = `repo:${repoId}:prs`;
 
-    // Find repo by GitHub repo ID
+    const cachedPRs = await redis.get(cacheKey);
+    if (cachedPRs) {
+      console.log(`⚡ Serving PR list for repo ${repoId} from cache`);
+      return res.status(200).json({
+        success: true,
+        prs: JSON.parse(cachedPRs),
+        fromCache: true,
+      });
+    }
+
     const repo = await Repo.findOne({ githubId: Number(repoId) });
     if (!repo) return res.status(404).json({ message: "Repo not found" });
 
     const prs = await Pull.find({ repo: repo._id }).sort({ createdAt: -1 });
+    await redis.setex(cacheKey, 300, JSON.stringify(prs));
 
-    res.status(200).json({ success: true, prs });
+    res.status(200).json({ success: true, prs, fromCache: false });
   } catch (err) {
     console.error("Error fetching PRs:", err);
     res.status(500).json({ message: "Unable to fetch pull requests" });
@@ -25,6 +37,19 @@ const getRepoPRs = async (req, res) => {
 const getPRDetails = async (req, res) => {
   try {
     const { repoId, prNumber } = req.params;
+    const cacheKey = `repo:${repoId}:pr:${prNumber}`;
+
+    const cachedPR = await redis.get(cacheKey);
+    if (cachedPR) {
+      console.log(
+        `⚡ Serving PR #${prNumber} details for repo ${repoId} from cache`
+      );
+      return res.status(200).json({
+        success: true,
+        pr: JSON.parse(cachedPR),
+        fromCache: true,
+      });
+    }
 
     const repo = await Repo.findOne({ githubId: Number(repoId) });
     if (!repo) return res.status(404).json({ message: "Repo not found" });
@@ -32,7 +57,9 @@ const getPRDetails = async (req, res) => {
     const pr = await Pull.findOne({ repo: repo._id, prNumber });
     if (!pr) return res.status(404).json({ message: "PR not found" });
 
-    res.status(200).json({ success: true, pr });
+    await redis.setex(cacheKey, 300, JSON.stringify(pr));
+
+    res.status(200).json({ success: true, pr, fromCache: false });
   } catch (err) {
     console.error("Error fetching PR details:", err);
     res.status(500).json({ message: "Unable to fetch PR details" });
@@ -43,20 +70,49 @@ const triggerPRAnalysis = async (req, res) => {
   try {
     const { repoId, prNumber } = req.params;
 
-    // Find repository
     const repo = await Repo.findOne({ githubId: Number(repoId) }).populate(
       "user"
     );
     if (!repo) return res.status(404).json({ message: "Repo not found" });
 
     const user = await User.findById(repo.user);
-    if (!user?.githubToken) {
+    if (!user?.githubToken)
       return res.status(400).json({ message: "GitHub not connected" });
-    }
 
     const [owner, repoName] = repo.fullName.split("/");
 
-    // Fetch PR details from GitHub
+    const commits = await githubRequest(
+      `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}/commits`,
+      user.githubToken
+    );
+
+    const latestCommit = commits[commits.length - 1]?.sha;
+    const commitCacheKey = `repo:${repoId}:pr:${prNumber}:lastCommit`;
+    const lastAnalyzedCommit = await redis.get(commitCacheKey);
+
+    if (lastAnalyzedCommit && lastAnalyzedCommit === latestCommit) {
+      console.log(
+        `⚡ PR #${prNumber} has no new commits, skipping Gemini call`
+      );
+      const analysis = await PRAnalysis.findOne({
+        repo: repo._id,
+        pull: await Pull.findOne({ repo: repo._id, prNumber }).then(
+          (p) => p?._id
+        ),
+      });
+
+      if (analysis) {
+        return res.status(200).json({
+          success: true,
+          analysis,
+          fromCache: true,
+          message: "PR not changed — reused existing analysis",
+        });
+      }
+    }
+
+    console.log(`🔄 New commit detected for PR #${prNumber}, analyzing...`);
+
     const prInfo = await githubRequest(
       `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}`,
       user.githubToken
@@ -67,12 +123,27 @@ const triggerPRAnalysis = async (req, res) => {
       user.githubToken
     );
 
-    const commits = await githubRequest(
-      `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}/commits`,
-      user.githubToken
+    const detailedFiles = await Promise.all(
+      files.map(async (f) => {
+        try {
+          const fileResponse = await githubRequest(
+            `https://api.github.com/repos/${owner}/${repoName}/contents/${f.filename}?ref=${prInfo.head.ref}`,
+            user.githubToken
+          );
+
+          let content = Buffer.from(fileResponse.content, "base64").toString(
+            "utf8"
+          );
+          if (content.length > 10000)
+            content =
+              content.slice(0, 10000) + "\n// [Content truncated for analysis]";
+          return { ...f, fullContent: content };
+        } catch {
+          return { ...f, fullContent: null };
+        }
+      })
     );
 
-    // Prepare PR data
     const prData = {
       title: prInfo.title,
       author: prInfo.user.login,
@@ -83,88 +154,43 @@ const triggerPRAnalysis = async (req, res) => {
       deletions: prInfo.deletions,
       changedFiles: prInfo.changed_files,
       commits: commits.length,
-      files: files.map((f) => ({
-        filename: f.filename,
-        additions: f.additions,
-        deletions: f.deletions,
-        patch: f.patch?.slice(0, 300) || "No diff preview",
-      })),
+      files: detailedFiles,
     };
 
-    // Get Gemini model
     const model = getGeminiModel();
 
-    // Gemini prompt
+    // 🧠 Revert to full schema prompt (to restore all fields)
     const prompt = `
-You are an expert Senior Software Engineer and PR reviewer. 
-Your task is to analyze this pull request deeply and return a valid JSON object following the schema below. 
-Focus on code quality, architecture, maintainability, and overall development practices.
-
-**Schema (JSON only):**
+SYSTEM: You are an expert Senior Software Engineer and PR reviewer.
+Analyze this pull request and output ONLY valid JSON following this schema:
 {
-  "healthScore": number, // 0–100 based on code clarity, modularity, performance, and correctness
+  "healthScore": number,
   "filesChanged": number,
   "linesAdded": number,
   "linesDeleted": number,
   "commits": number,
-  "summary": string, // concise technical summary of the PR and its overall purpose
-  "keyFindings": [string], // list of the most critical insights or issues found
-  "suggestions": [
-    {
-      "severity": "error" | "warning" | "info",
-      "description": string,
-      "file": string,
-      "line": number | null,
-      "category": "security" | "performance" | "readability" | "maintainability" | "best_practice",
-      "suggestedFix": string
-    }
-  ],
-  "comments": [
-    {
-      "author": "AI Reviewer",
-      "content": string,
-      "timestamp": string,
-      "type": "comment" | "suggestion" | "approval",
-      "reactions": [
-        { "emoji": string, "count": number }
-      ]
-    }
-  ],
-  "metrics": {
-    "testCoverageChange": string, // e.g. "+5%" or "No tests added"
-    "documentationImpact": string, // e.g. "Updated API docs" or "Missing README update"
-    "breakingChanges": boolean
-  }
+  "summary": string,
+  "keyFindings": [string],
+  "suggestions": [ { "severity": "error" | "warning" | "info", "description": string, "file": string, "suggestedFix": string } ],
+  "comments": []
 }
-
-**Evaluation Criteria:**
-- Review logic correctness, structure, and readability.
-- Check if the code adheres to standard design principles (SOLID, DRY, KISS).
-- Look for code smells, potential bugs, performance bottlenecks, and missing validations.
-- Evaluate whether commits are meaningful and follow good commit practices.
-- Identify missing tests, poor naming, hardcoded values, or unclear logic.
-- Suggest improvements in a concise, actionable, and professional tone.
-
-Return only a valid JSON object, no explanations or text outside of JSON.
-
-PR Data:
+PR DATA:
 ${JSON.stringify(prData, null, 2)}
 `;
 
-    // Call Gemini
     const result = await model.generateContent(prompt);
     const rawResponse = await result.response.text();
 
     let parsed;
     try {
-      let cleanedOutput = rawResponse.trim();
-      cleanedOutput = cleanedOutput
+      let cleaned = rawResponse
+        .trim()
         .replace(/^```json\s*/, "")
         .replace(/```$/, "")
         .trim();
-      parsed = JSON.parse(cleanedOutput);
+      parsed = JSON.parse(cleaned);
     } catch (err) {
-      console.error("Failed to parse Gemini output as JSON:", err);
+      console.error("❌ Failed to parse Gemini output:", err);
       parsed = {
         healthScore: 0,
         filesChanged: prData.changedFiles,
@@ -183,14 +209,13 @@ ${JSON.stringify(prData, null, 2)}
       };
     }
 
-    // Find Pull document in DB
     const pull = await Pull.findOne({
       repo: repo._id,
       prNumber: Number(prNumber),
     });
     if (!pull) return res.status(404).json({ message: "PR not found in DB" });
 
-    // Upsert PR analysis
+    // ✅ Restore full field saving
     const analysis = await PRAnalysis.findOneAndUpdate(
       { pull: pull._id },
       {
@@ -200,6 +225,10 @@ ${JSON.stringify(prData, null, 2)}
         author: prData.author,
         created: prData.created,
         status: prData.status,
+        filesChanged: prData.changedFiles,
+        linesAdded: prData.additions,
+        linesDeleted: prData.deletions,
+        commits: prData.commits,
         ...parsed,
         analyzedAt: new Date().toISOString(),
       },
@@ -210,27 +239,37 @@ ${JSON.stringify(prData, null, 2)}
     await pull.save();
 
     const pulls = await Pull.find({ repo: repo._id });
-
-    const totalPRs = pulls.length;
-    const analyzedPRs = pulls.filter((p) => p.healthScore !== undefined).length;
+    const analyzed = pulls.filter((p) => p.healthScore !== undefined);
     const avgHealthScore =
-      analyzedPRs > 0
-        ? pulls
-            .filter((p) => p.healthScore !== undefined)
-            .reduce((sum, p) => sum + p.healthScore, 0) / analyzedPRs
+      analyzed.length > 0
+        ? analyzed.reduce((sum, p) => sum + p.healthScore, 0) / analyzed.length
         : 0;
-    const openPRs = pulls.filter((p) => p.state === "open").length;
 
     repo.stats = {
-      totalPRs,
-      totalAnalyzedPRs: analyzedPRs,
-      openPRs,
+      totalPRs: pulls.length,
+      totalAnalyzedPRs: analyzed.length,
+      openPRs: pulls.filter((p) => p.state === "open").length,
       averageHealthScore: Math.round(avgHealthScore),
     };
-
     await repo.save();
 
-    res.status(200).json({ success: true, analysis });
+    // ✅ Refresh caches after DB update
+    const prCacheKey = `repo:${repoId}:pr:${prNumber}`;
+    const prsListKey = `repo:${repoId}:prs`;
+    const userDashboardKey = `user:${repo.user._id}:dashboardStats`;
+
+    await Promise.all([
+      redis.setex(prCacheKey, 300, JSON.stringify(pull)),
+      redis.setex(prsListKey, 300, JSON.stringify(pulls)),
+      redis.del(userDashboardKey),
+      redis.set(commitCacheKey, latestCommit),
+    ]);
+
+    console.log(
+      `🧠 PR #${prNumber} analysis updated, saved & caches refreshed`
+    );
+
+    res.status(200).json({ success: true, analysis, fromCache: false });
   } catch (err) {
     console.error("Error triggering PR analysis:", err);
     res.status(500).json({ message: "Unable to trigger PR analysis" });

@@ -5,6 +5,7 @@ const Push = require("../model/Push");
 const Pull = require("../model/Pull");
 const User = require("../model/User");
 const { formatToReadable } = require("../config/dateFunction");
+const redis = require("../cache/redis");
 
 const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
 
@@ -25,10 +26,15 @@ const githubWebhookController = async (req, res) => {
   try {
     if (!verifySignature(req))
       return res.status(401).json({ message: "Invalid signature" });
+
     const event = req.headers["x-github-event"];
     const payload = req.body;
+
     const repo = await Repo.findOne({ githubId: payload.repository.id });
     if (!repo) return res.status(404).json({ message: "Repo not found" });
+
+    const repoCacheKey = `user:${repo.user}:repos`;
+    const dashboardKey = `user:${repo.user}:dashboardStats`;
 
     if (event === "push") {
       const headCommit = payload.head_commit || {};
@@ -50,6 +56,12 @@ const githubWebhookController = async (req, res) => {
       repo.lastPushedAt = pushData.timestamp;
       repo.lastPushedBy = pushData.user;
       await repo.save();
+
+      await Promise.all([
+        redis.del(repoCacheKey),
+        redis.del(dashboardKey),
+      ]);
+      console.log(`🧹 Cache cleared for ${repoCacheKey} after push`);
     }
 
     if (event === "pull_request") {
@@ -95,6 +107,7 @@ const githubWebhookController = async (req, res) => {
         repo: repo._id,
         prNumber: prPayload.number,
       });
+
       if (!pr) {
         let initialState =
           prAction === "closed"
@@ -102,6 +115,7 @@ const githubWebhookController = async (req, res) => {
               ? "merged"
               : "closed"
             : "open";
+
         pr = await Pull.create({
           repo: repo._id,
           prNumber: prPayload.number,
@@ -128,15 +142,28 @@ const githubWebhookController = async (req, res) => {
       repo.lastPrActivity = actionEntry.timestamp;
       repo.lastPrBy = pr.user;
       await repo.save();
+
+      await Promise.all([
+        redis.del(repoCacheKey),
+        redis.del(dashboardKey),
+      ]);
+      console.log(`🧹 Cache cleared for ${repoCacheKey} after pull_request`);
     }
 
     if (event === "repository" && payload.action === "deleted") {
       await Repo.deleteOne({ githubId: payload.repository.id });
       await Pull.deleteMany({ repo: repo._id });
       await Push.deleteMany({ repo: repo._id });
+
+      await Promise.all([
+        redis.del(repoCacheKey),
+        redis.del(dashboardKey),
+      ]);
+
       console.log(
         `🗑️ Repository ${payload.repository.full_name} deleted from DB`
       );
+
       return res
         .status(200)
         .json({ success: true, message: "Repository deleted" });
@@ -155,6 +182,12 @@ const githubWebhookController = async (req, res) => {
       };
       repo.lastStarredAt = formatToReadable(new Date());
       await repo.save();
+
+      await Promise.all([
+        redis.del(repoCacheKey),
+        redis.del(dashboardKey),
+      ]);
+      console.log(`🧹 Cache cleared for ${repoCacheKey} after star`);
     }
 
     if (event === "fork") {
@@ -167,10 +200,17 @@ const githubWebhookController = async (req, res) => {
       };
       repo.lastForkedAt = formatToReadable(new Date());
       await repo.save();
+
+      await Promise.all([
+        redis.del(repoCacheKey),
+        redis.del(dashboardKey),
+      ]);
+      console.log(`🧹 Cache cleared for ${repoCacheKey} after fork`);
     }
 
     return res.status(200).json({ success: true });
   } catch (error) {
+    console.error("❌ Error in githubWebhookController:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
@@ -184,6 +224,7 @@ const registerNewWebhook = async (req, res) => {
       const user = await User.findOne({ githubConnected: true });
       if (!user?.githubToken)
         return res.status(400).json({ message: "GitHub token not found" });
+
       const { data: info } = await axios.get(
         `https://api.github.com/repositories/${repoId}`,
         {
@@ -193,6 +234,7 @@ const registerNewWebhook = async (req, res) => {
           },
         }
       );
+
       repo = await Repo.create({
         user: user._id,
         githubId: info.id,
@@ -206,6 +248,9 @@ const registerNewWebhook = async (req, res) => {
         stargazersCount: info.stargazers_count,
         watchersCount: info.watchers_count,
       });
+
+      await redis.del(`user:${user._id}:repos`);
+      console.log(`♻️ Cleared cache for user:${user._id} after new repo added`);
     }
 
     const user = await User.findById(repo.user);
@@ -251,6 +296,7 @@ const registerNewWebhook = async (req, res) => {
 
     return res.json({ success: true, webhook });
   } catch (err) {
+    console.error("❌ Error registering webhook:", err);
     return res.status(500).json({ message: "Failed to register webhook" });
   }
 };
