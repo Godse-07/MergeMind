@@ -12,10 +12,26 @@ const redisConfig = isProd
         servername: process.env.REDIS_HOST,
         rejectUnauthorized: false,
       },
+
+      maxRetriesPerRequest: null,
+      reconnectOnError: (err) => {
+        console.error("🔁 Redis Cloud reconnecting after error:", err.message);
+        return true;
+      },
+      retryStrategy(times) {
+        const delay = Math.min(times * 200, 5000);
+        console.log(`⏳ Reconnecting to Redis Cloud in ${delay}ms`);
+        return delay;
+      },
     }
   : {
       host: process.env.REDIS_HOST || "127.0.0.1",
       port: process.env.REDIS_PORT || 6379,
+      retryStrategy(times) {
+        const delay = Math.min(times * 200, 5000);
+        console.log(`⏳ Reconnecting to Local Redis in ${delay}ms`);
+        return delay;
+      },
     };
 
 module.exports = redisConfig;
