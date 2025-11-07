@@ -73,9 +73,13 @@ const triggerPRAnalysis = async (req, res) => {
   try {
     const { repoId, prNumber } = req.params;
 
-    const repo = await Repo.findOne({ githubId: Number(repoId) }).populate(
-      "user"
-    );
+    let repo;
+    if (!isNaN(Number(repoId))) {
+      repo = await Repo.findOne({ githubId: Number(repoId) }).populate("user");
+    } else {
+      repo = await Repo.findOne({ name: repoId }).populate("user");
+    }
+    
     if (!repo) return res.status(404).json({ message: "Repo not found" });
 
     const user = await User.findById(repo.user);
@@ -332,7 +336,9 @@ ${JSON.stringify(prData, null, 2)}
     console.log(req.user.email + " from prController triggerPRAnalysis");
 
     try {
-      const dashboardUrl = `${getFrontendBaseUrl(req)}/repository/${repoName}/pr/${prNumber}`;
+      const dashboardUrl = `${getFrontendBaseUrl(
+        req
+      )}/repository/${repoName}/pr/${prNumber}`;
 
       await sendMail({
         to: user.email,
