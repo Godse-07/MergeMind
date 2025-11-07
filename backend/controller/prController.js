@@ -123,26 +123,80 @@ const triggerPRAnalysis = async (req, res) => {
       user.githubToken
     );
 
-    const detailedFiles = await Promise.all(
-      files.map(async (f) => {
-        try {
-          const fileResponse = await githubRequest(
-            `https://api.github.com/repos/${owner}/${repoName}/contents/${f.filename}?ref=${prInfo.head.ref}`,
-            user.githubToken
-          );
+    const allFiles = files;
 
-          let content = Buffer.from(fileResponse.content, "base64").toString(
-            "utf8"
-          );
-          if (content.length > 10000)
-            content =
-              content.slice(0, 10000) + "\n// [Content truncated for analysis]";
-          return { ...f, fullContent: content };
-        } catch {
-          return { ...f, fullContent: null };
+    const detailedFiles = await Promise.all(
+      allFiles.map(async (f) => {
+        try {
+          let content = null;
+
+          if (f.status !== "removed") {
+            try {
+              const headRepoFullName =
+                prInfo.head.repo?.full_name || `${owner}/${repoName}`;
+
+              const fileResponse = await githubRequest(
+                `https://api.github.com/repos/${headRepoFullName}/contents/${f.filename}?ref=${prInfo.head.ref}`,
+                user.githubToken
+              );
+              content = Buffer.from(fileResponse.content, "base64").toString(
+                "utf8"
+              );
+              if (content.length > 10000)
+                content =
+                  content.slice(0, 10000) +
+                  "\n// [Content truncated for analysis]";
+            } catch (err) {
+              console.warn(`⚠️ Could not fetch ${f.filename}: ${err.message}`);
+              content = null;
+            }
+          }
+
+          const changes = [];
+          if (f.patch) {
+            const regex = /@@ -(\d+)(?:,\d+)? \+(\d+)(?:,(\d+))? @@/g;
+            let match;
+            while ((match = regex.exec(f.patch)) !== null) {
+              const from = Number(match[2]);
+              const span = match[3] ? Number(match[3]) : 1;
+              const to = from + span - 1;
+              changes.push({ from, to });
+            }
+          }
+
+          return {
+            filename: f.filename,
+            previousFilename: f.previous_filename || null, // renamed-from path
+            status: f.status || "modified",
+            fullContent: content,
+            changes,
+          };
+        } catch (err) {
+          console.warn(`⚠️ Skipped ${f.filename}: ${err.message}`);
+          return {
+            filename: f.filename,
+            previousFilename: f.previous_filename || null,
+            status: f.status || "modified",
+            fullContent: null,
+            changes: [],
+          };
         }
       })
     );
+
+    console.log("📁 File changes detected:");
+    detailedFiles.forEach((f) => {
+      const ranges =
+        f.changes.length > 0
+          ? f.changes.map((c) => `${c.from}-${c.to}`).join(", ")
+          : "no line diffs";
+      const renameInfo = f.previousFilename
+        ? ` (renamed from ${f.previousFilename})`
+        : "";
+      console.log(
+        `   - ${f.status.toUpperCase()}: ${f.filename}${renameInfo} → ${ranges}`
+      );
+    });
 
     const prData = {
       title: prInfo.title,
@@ -159,7 +213,6 @@ const triggerPRAnalysis = async (req, res) => {
 
     const model = getGeminiModel();
 
-    // 🧠 Revert to full schema prompt (to restore all fields)
     const prompt = `
 SYSTEM: You are an expert Senior Software Engineer and PR reviewer.
 Analyze this pull request and output ONLY valid JSON following this schema:
@@ -215,7 +268,6 @@ ${JSON.stringify(prData, null, 2)}
     });
     if (!pull) return res.status(404).json({ message: "PR not found in DB" });
 
-    // ✅ Restore full field saving
     const analysis = await PRAnalysis.findOneAndUpdate(
       { pull: pull._id },
       {
@@ -229,6 +281,12 @@ ${JSON.stringify(prData, null, 2)}
         linesAdded: prData.additions,
         linesDeleted: prData.deletions,
         commits: prData.commits,
+        files: detailedFiles.map((f) => ({
+          filename: f.filename,
+          previousFilename: f.previousFilename || null,
+          status: f.status || "modified",
+          changes: f.changes || [],
+        })),
         ...parsed,
         analyzedAt: new Date().toISOString(),
       },
@@ -253,7 +311,6 @@ ${JSON.stringify(prData, null, 2)}
     };
     await repo.save();
 
-    // ✅ Refresh caches after DB update
     const prCacheKey = `repo:${repoId}:pr:${prNumber}`;
     const prsListKey = `repo:${repoId}:prs`;
     const userDashboardKey = `user:${repo.user._id}:dashboardStats`;

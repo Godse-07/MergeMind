@@ -1,6 +1,22 @@
 const mongoose = require("mongoose");
 const { formatToReadable } = require("../config/dateFunction");
 
+const fileChangeSchema = new mongoose.Schema({
+  filename: { type: String, required: true },
+  previousFilename: { type: String }, // 🆕 for renamed files
+  status: {
+    type: String,
+    enum: ["added", "modified", "removed", "renamed"],
+    required: true,
+  },
+  changes: [
+    {
+      from: { type: Number },
+      to: { type: Number },
+    },
+  ],
+});
+
 const suggestionSchema = new mongoose.Schema({
   severity: {
     type: String,
@@ -54,6 +70,10 @@ const prAnalysisSchema = new mongoose.Schema(
     suggestions: { type: [suggestionSchema], default: [] },
     comments: { type: [commentSchema], default: [] },
     analyzedAt: { type: String, default: () => formatToReadable(new Date()) },
+    files: {
+      type: [fileChangeSchema],
+      default: [],
+    },
   },
   { timestamps: true }
 );
