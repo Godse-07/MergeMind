@@ -5,6 +5,7 @@ const passwordEncryption = require("../config/passwordEncryption");
 const axios = require("axios");
 const Repo = require("../model/Repo");
 const { registerWebhook } = require("../config/registerWebhook");
+const { getFrontendBaseUrl } = require("../helper/findBaseURLHelper");
 
 const loginController = async (req, res) => {
   try {
@@ -189,7 +190,9 @@ const connectGithubController = async (req, res) => {
       }
     }
 
-    res.redirect(`${process.env.FRONTEND_URL}/`);
+    const url = getFrontendBaseUrl(req);
+
+    res.redirect(`${url}/`);
   } catch (error) {
     console.log("Error in connectGithub controller", error);
     res
