@@ -1,10 +1,13 @@
 const redis = require("../cache/redis");
 const getGeminiModel = require("../config/gemini");
+const { generatePRAnalysisEmail } = require("../helper/emailTemplate");
+const { getFrontendBaseUrl } = require("../helper/findBaseURLHelper");
 const PRAnalysis = require("../model/PRAnalysis");
 const Pull = require("../model/Pull");
 const Repo = require("../model/Repo");
 const User = require("../model/User");
 const { githubRequest } = require("../utils/githubApi");
+const sendMail = require("../utils/mailer");
 
 const getRepoPRs = async (req, res) => {
   try {
@@ -325,6 +328,30 @@ ${JSON.stringify(prData, null, 2)}
     console.log(
       `🧠 PR #${prNumber} analysis updated, saved & caches refreshed`
     );
+
+    console.log(req.user.email + " from prController triggerPRAnalysis");
+
+    try {
+      const dashboardUrl = `${getFrontendBaseUrl(req)}/repository/${repoName}/pr/${prNumber}`;
+
+      await sendMail({
+        to: user.email,
+        subject: `PR #${prNumber} analyzed successfully on MergeMind`,
+        html: generatePRAnalysisEmail({
+          repoName: repo.fullName,
+          prNumber,
+          healthScore: parsed.healthScore,
+          status: prData.status,
+          dashboardUrl,
+        }),
+      });
+
+      console.log(`📧 Email notification sent for PR #${prNumber}`);
+    } catch (emailErr) {
+      console.error(
+        `❌ Failed to send email notification: ${emailErr.message}`
+      );
+    }
 
     res.status(200).json({ success: true, analysis, fromCache: false });
   } catch (err) {

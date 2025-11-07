@@ -1,4 +1,7 @@
-const envFile = process.env.NODE_ENV === "production" ? ".env.production" : ".env.development";
+const envFile =
+  process.env.NODE_ENV === "production"
+    ? ".env.production"
+    : ".env.development";
 require("dotenv").config({ path: envFile });
 const express = require("express");
 const cookieParser = require("cookie-parser");
@@ -11,9 +14,19 @@ const dashboardRouter = require("./routes/dashboardRoutes");
 
 const app = express();
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "https://www.mergemind.me",
+  "http://localhost:5173",
+];
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   })
 );
