@@ -191,7 +191,7 @@ const connectGithubController = async (req, res) => {
     }
 
     const url = getFrontendBaseUrl(req);
-
+    console.log("Redirecting to:", url);
     res.redirect(`${url}/`);
   } catch (error) {
     console.log("Error in connectGithub controller", error);
