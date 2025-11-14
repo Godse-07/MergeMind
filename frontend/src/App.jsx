@@ -9,6 +9,9 @@ import RepositoryPage from "./pages/RepositoryPage";
 import PrAnalysisPage from "./pages/PrAnalysisPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Docs from "./pages/Docs";
+import Forgetpasswordpage from "./pages/Forgetpasswordpage";
+import OTPPage from "./pages/OTPPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 const App = () => {
   return (
@@ -25,6 +28,9 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+        <Route path="/forgot-password" element={<Forgetpasswordpage />} />
+        <Route path="/otp" element={<OTPPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route
           path="/dashboard"
           element={

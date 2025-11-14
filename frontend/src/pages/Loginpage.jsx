@@ -133,6 +133,15 @@ const LoginPage = () => {
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
+
+            <p className="text-right mt-1">
+              <a
+                href="/forgot-password"
+                className="text-blue-600 hover:underline text-sm font-medium"
+              >
+                Forgot Password?
+              </a>
+            </p>
           </div>
 
           {/* Submit Button */}

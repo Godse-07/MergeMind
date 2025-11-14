@@ -11,6 +11,7 @@ const repoRouter = require("./routes/repoRoutes");
 const webhookRouter = require("./routes/webhookRoutes");
 const prRouter = require("./routes/prRoutes");
 const dashboardRouter = require("./routes/dashboardRoutes");
+const passwordForgetRouter = require("./routes/passwordForgetRoutes");
 
 const app = express();
 
@@ -44,6 +45,8 @@ app.use("/api/webhooks", webhookRouter);
 app.use("/api/pr", prRouter);
 
 app.use("/api/dashboard", dashboardRouter);
+
+app.use("/api/password-forget", passwordForgetRouter);
 
 app.get("/", (req, res) => {
   res.send("Welcome to MergeMind API");

@@ -67,3 +67,18 @@ export const disConnectGithub = async () => {
   const response = await axiosInstance.get("/auth/disconnectGithub");
   return response.data;
 }
+
+export const forgetPassword = async (email) => {
+  const response = await axiosInstance.post("/password-forget/forget-password", { email });
+  return response.data;
+}
+
+export const verifyOTP = async (email, otp) => {
+  const response = await axiosInstance.post("/password-forget/verify-otp", { email, otp });
+  return response.data;
+}
+
+export const resetPassword = async (email, newPassword) => {
+  const response = await axiosInstance.post("/password-forget/reset-password", { email, newPassword });
+  return response.data;
+}
