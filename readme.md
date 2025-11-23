@@ -12,7 +12,7 @@
 [![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?logo=vercel)](https://merge-mind.vercel.app/)
 
 
-**Live URL:** 🔗 [https://merge-mind.vercel.app/](https://merge-mind.vercel.app/)
+**Live URL:** 🔗 [https://mergemind.me](https://mergemind.me/)
 
 ---
 
@@ -98,8 +98,6 @@ node index.js / nodemon index.js
 
 ```bash
 # 3️⃣ Setup Frontend
-cd ../frontend
-npm install
 
 # Create a .env file in frontend/ using the variables above, then run:
 npm run dev
