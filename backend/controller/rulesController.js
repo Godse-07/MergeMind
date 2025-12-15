@@ -1,4 +1,5 @@
 const Rules = require("../model/Rules");
+const redis = require("../cache/redis");
 
 const setRules = async (req, res) => {
   try {
@@ -38,15 +39,31 @@ const setRules = async (req, res) => {
 const getRules = async (req, res) => {
   try {
     const userId = req.user.id;
+    const cacheKey = `user:${userId}:rules`;
+
+    const cachedRules = await redis.get(cacheKey);
+    if (cachedRules) {
+      console.log(`⚡ Serving custom rules for user ${userId} from cache`);
+      return res.status(200).json({
+        success: true,
+        data: JSON.parse(cachedRules),
+        fromCache: true,
+      });
+    }
 
     const rulesData = await Rules.findOne({ user_id: userId });
 
+    const rules = rulesData ? rulesData.rules : [];
+
+    await redis.setex(cacheKey, 300, JSON.stringify(rules));
+
     return res.status(200).json({
       success: true,
-      data: rulesData ? rulesData.rules : [],
+      data: rules,
+      fromCache: false,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error fetching rules:", error);
     return res.status(500).json({
       success: false,
       message: "Server Error",
