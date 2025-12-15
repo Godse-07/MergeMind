@@ -1,10 +1,11 @@
 const redis = require("../cache/redis");
-const getGeminiModel = require("../config/gemini");
+const { runAI } = require("../config/openRouter");
 const { generatePRAnalysisEmail } = require("../helper/emailTemplate");
 const { getFrontendBaseUrl } = require("../helper/findBaseURLHelper");
 const PRAnalysis = require("../model/PRAnalysis");
 const Pull = require("../model/Pull");
 const Repo = require("../model/Repo");
+const Rules = require("../model/Rules");
 const User = require("../model/User");
 const { githubRequest } = require("../utils/githubApi");
 const sendMail = require("../utils/mailer");
@@ -79,7 +80,7 @@ const triggerPRAnalysis = async (req, res) => {
     } else {
       repo = await Repo.findOne({ name: repoId }).populate("user");
     }
-    
+
     if (!repo) return res.status(404).json({ message: "Repo not found" });
 
     const user = await User.findById(repo.user);
@@ -173,7 +174,7 @@ const triggerPRAnalysis = async (req, res) => {
 
           return {
             filename: f.filename,
-            previousFilename: f.previous_filename || null, // renamed-from path
+            previousFilename: f.previous_filename || null,
             status: f.status || "modified",
             fullContent: content,
             changes,
@@ -218,10 +219,27 @@ const triggerPRAnalysis = async (req, res) => {
       files: detailedFiles,
     };
 
-    const model = getGeminiModel();
+    const customUserRules = await Rules.findOne({ user_id: user._id });
+    const customRules = customUserRules?.rules || [];
 
     const prompt = `
-SYSTEM: You are an expert Senior Software Engineer and PR reviewer.
+SYSTEM:
+You are an expert Senior Software Engineer and PR reviewer.
+
+IMPORTANT:
+The following CUSTOM REVIEW RULES are defined by the user.
+You MUST strictly enforce these rules while reviewing the PR.
+If any rule is violated, report it clearly in "suggestions".
+
+CUSTOM RULES:
+${
+  customRules.length > 0
+    ? customRules.map((r, i) => `${i + 1}. ${r}`).join("\n")
+    : "No custom rules provided."
+}
+
+---
+
 Analyze this pull request and output ONLY valid JSON following this schema:
 {
   "healthScore": number,
@@ -231,15 +249,34 @@ Analyze this pull request and output ONLY valid JSON following this schema:
   "commits": number,
   "summary": string,
   "keyFindings": [string],
-  "suggestions": [ { "severity": "error" | "warning" | "info", "description": string, "file": string, "suggestedFix": string } ],
+  "suggestions": [
+    {
+      "severity": "error" | "warning" | "info",
+      "description": string,
+      "file": string,
+      "suggestedFix": string
+    }
+  ],
   "comments": []
 }
+
 PR DATA:
 ${JSON.stringify(prData, null, 2)}
 `;
 
-    const result = await model.generateContent(prompt);
-    const rawResponse = await result.response.text();
+    let rawResponse;
+
+    try {
+      rawResponse = await runAI(prompt);
+    } catch (aiErr) {
+      console.error("❌ Openrouter AI error:", aiErr.message);
+
+      return res.status(200).json({
+        success: false,
+        aiDisabled: true,
+        message: "AI analysis temporarily unavailable",
+      });
+    }
 
     let parsed;
     try {

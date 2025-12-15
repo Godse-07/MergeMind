@@ -12,6 +12,7 @@ import Docs from "./pages/Docs";
 import Forgetpasswordpage from "./pages/Forgetpasswordpage";
 import OTPPage from "./pages/OTPPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import SettingsPage from "./pages/SettingsPage";
 
 const App = () => {
   return (
@@ -68,6 +69,14 @@ const App = () => {
           element={
             <ProtectedRoute>
               <Docs />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
             </ProtectedRoute>
           }
         />

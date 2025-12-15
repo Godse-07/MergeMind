@@ -82,3 +82,13 @@ export const resetPassword = async (email, newPassword) => {
   const response = await axiosInstance.post("/password-forget/reset-password", { email, newPassword });
   return response.data;
 }
+
+export const addCustomRules = async (rules) => {
+  const response = await axiosInstance.post("/rules/setRules", { rules });
+  return response.data;
+}
+
+export const getCustomRules = async () => {
+  const response = await axiosInstance.get("/rules/getRules");
+  return response.data;
+}
