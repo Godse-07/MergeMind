@@ -2,12 +2,14 @@ const redis = require("../cache/redis");
 const { runAI } = require("../config/openRouter");
 const { generatePRAnalysisEmail } = require("../helper/emailTemplate");
 const { getFrontendBaseUrl } = require("../helper/findBaseURLHelper");
+const { formatPRComment } = require("../helper/formatPRComment");
 const PRAnalysis = require("../model/PRAnalysis");
 const Pull = require("../model/Pull");
 const Repo = require("../model/Repo");
 const Rules = require("../model/Rules");
 const User = require("../model/User");
 const { githubRequest } = require("../utils/githubApi");
+const { upsertPRComment } = require("../utils/githubPRComment");
 const sendMail = require("../utils/mailer");
 
 const getRepoPRs = async (req, res) => {
@@ -336,6 +338,20 @@ ${JSON.stringify(prData, null, 2)}
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
+
+    try {
+      const commentBody = formatPRComment(analysis, prData);
+      await upsertPRComment({
+        owner,
+        repo: repoName,
+        prNumber,
+        body: commentBody,
+        token: user.githubToken,
+      });
+      console.log(`💬 PR #${prNumber} comment written/updated successfully`);
+    } catch (err) {
+      console.error("❌ Failed to write PR comment:", err.message);
+    }
 
     pull.healthScore = parsed.healthScore;
     await pull.save();
