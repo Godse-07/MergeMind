@@ -47,6 +47,26 @@ const SettingsPage = () => {
     fetchRules();
   }, []);
 
+  const handleDeleteAll = async () => {
+    try {
+      setSaving(true);
+
+      // clear backend
+      await addCustomRules([]);
+
+      // reset UI
+      setRules([{ id: crypto.randomUUID(), text: "" }]);
+      setTouched({});
+
+      toast.success("All rules deleted");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete rules");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleChange = (index, value) => {
     const updated = [...rules];
     updated[index].text = value;
@@ -201,6 +221,7 @@ const SettingsPage = () => {
 
                   {/* Save */}
                   <div className="pt-6 flex items-center gap-4">
+                    {/* Save */}
                     <button
                       type="submit"
                       disabled={saving}
@@ -208,6 +229,17 @@ const SettingsPage = () => {
                     >
                       <Save size={16} />
                       {saving ? "Saving..." : "Save Rules"}
+                    </button>
+
+                    {/* Delete All */}
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={handleDeleteAll}
+                      className="flex items-center gap-2 border border-red-500 text-red-600 px-6 py-3 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                    >
+                      <Trash2 size={16} />
+                      Delete All
                     </button>
                   </div>
                 </form>
