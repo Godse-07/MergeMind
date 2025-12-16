@@ -9,7 +9,13 @@ const Repo = require("../model/Repo");
 const Rules = require("../model/Rules");
 const User = require("../model/User");
 const { githubRequest } = require("../utils/githubApi");
+const {
+  attachLineNumbersToSuggestions,
+  createInlineReview,
+} = require("../utils/githubInlineComments");
 const { upsertPRComment } = require("../utils/githubPRComment");
+const { createPRReview } = require("../utils/githubPRReview");
+const { setCommitStatus } = require("../utils/githubStatusCheck");
 const sendMail = require("../utils/mailer");
 
 const getRepoPRs = async (req, res) => {
@@ -97,6 +103,13 @@ const triggerPRAnalysis = async (req, res) => {
     );
 
     const latestCommit = commits[commits.length - 1]?.sha;
+
+    if (!latestCommit) {
+      return res.status(400).json({
+        message: "Unable to determine latest commit for PR",
+      });
+    }
+
     const commitCacheKey = `repo:${repoId}:pr:${prNumber}:lastCommit`;
     const lastAnalyzedCommit = await redis.get(commitCacheKey);
 
@@ -149,37 +162,29 @@ const triggerPRAnalysis = async (req, res) => {
                 `https://api.github.com/repos/${headRepoFullName}/contents/${f.filename}?ref=${prInfo.head.ref}`,
                 user.githubToken
               );
+
               content = Buffer.from(fileResponse.content, "base64").toString(
                 "utf8"
               );
-              if (content.length > 10000)
+
+              if (content.length > 10000) {
                 content =
                   content.slice(0, 10000) +
                   "\n// [Content truncated for analysis]";
+              }
             } catch (err) {
               console.warn(`⚠️ Could not fetch ${f.filename}: ${err.message}`);
-              content = null;
             }
           }
 
-          const changes = [];
-          if (f.patch) {
-            const regex = /@@ -(\d+)(?:,\d+)? \+(\d+)(?:,(\d+))? @@/g;
-            let match;
-            while ((match = regex.exec(f.patch)) !== null) {
-              const from = Number(match[2]);
-              const span = match[3] ? Number(match[3]) : 1;
-              const to = from + span - 1;
-              changes.push({ from, to });
-            }
-          }
+          const patchLines = f.patch ? f.patch.split("\n") : [];
 
           return {
             filename: f.filename,
             previousFilename: f.previous_filename || null,
             status: f.status || "modified",
             fullContent: content,
-            changes,
+            patchLines,
           };
         } catch (err) {
           console.warn(`⚠️ Skipped ${f.filename}: ${err.message}`);
@@ -188,7 +193,7 @@ const triggerPRAnalysis = async (req, res) => {
             previousFilename: f.previous_filename || null,
             status: f.status || "modified",
             fullContent: null,
-            changes: [],
+            patchLines: [],
           };
         }
       })
@@ -196,15 +201,12 @@ const triggerPRAnalysis = async (req, res) => {
 
     console.log("📁 File changes detected:");
     detailedFiles.forEach((f) => {
-      const ranges =
-        f.changes.length > 0
-          ? f.changes.map((c) => `${c.from}-${c.to}`).join(", ")
-          : "no line diffs";
-      const renameInfo = f.previousFilename
-        ? ` (renamed from ${f.previousFilename})`
-        : "";
+      const hasDiff = Array.isArray(f.patchLines) && f.patchLines.length > 0;
+
       console.log(
-        `   - ${f.status.toUpperCase()}: ${f.filename}${renameInfo} → ${ranges}`
+        `   - ${f.status.toUpperCase()}: ${f.filename} → ${
+          hasDiff ? "has diff" : "no diff"
+        }`
       );
     });
 
@@ -252,13 +254,14 @@ Analyze this pull request and output ONLY valid JSON following this schema:
   "summary": string,
   "keyFindings": [string],
   "suggestions": [
-    {
-      "severity": "error" | "warning" | "info",
-      "description": string,
-      "file": string,
-      "suggestedFix": string
-    }
-  ],
+  {
+    "severity": "error" | "warning" | "info",
+    "description": string,
+    "file": string,
+    "lineHint": string,
+    "suggestedFix": string
+  }
+],
   "comments": []
 }
 
@@ -347,10 +350,96 @@ ${JSON.stringify(prData, null, 2)}
         prNumber,
         body: commentBody,
         token: user.githubToken,
+        commitSha: latestCommit,
       });
       console.log(`💬 PR #${prNumber} comment written/updated successfully`);
     } catch (err) {
       console.error("❌ Failed to write PR comment:", err.message);
+    }
+
+    const hasErrors = parsed.suggestions?.some((s) => {
+      return s.severity === "error";
+    });
+
+    const reviewCacheKey = `repo:${repoId}:pr:${prNumber}:reviewedCommit`;
+    const lastReviewedCommit = await redis.get(reviewCacheKey);
+
+    if (hasErrors && lastReviewedCommit !== latestCommit) {
+      await createPRReview({
+        owner,
+        repo: repoName,
+        prNumber,
+        token: user.githubToken,
+        event: "REQUEST_CHANGES",
+        body: "❌ MergeMind detected critical issues that must be fixed before merge.",
+      });
+
+      await redis.set(reviewCacheKey, latestCommit);
+    }
+
+    const suggestionsWithLines = attachLineNumbersToSuggestions(
+      parsed.suggestions,
+      detailedFiles
+    );
+
+    const inlineSuggestions = suggestionsWithLines.filter(
+      (s) => s.file && s.line
+    );
+
+    suggestionsWithLines
+      .filter((s) => s.file && !s.line)
+      .forEach((s) => {
+        console.log(`⚠️ Inline comment skipped for ${s.file} (no line match)`);
+      });
+
+    const inlineCacheKey = `repo:${repoId}:pr:${prNumber}:inline:${latestCommit}`;
+    const inlineDone = await redis.get(inlineCacheKey);
+
+    if (!inlineDone) {
+      if (inlineSuggestions.length === 0) {
+        console.log("⚠️ No valid inline comments to post");
+      } else {
+        try {
+          await createInlineReview({
+            owner,
+            repo: repoName,
+            prNumber,
+            token: user.githubToken,
+            commitSha: latestCommit,
+            suggestions: inlineSuggestions,
+          });
+
+          await redis.set(inlineCacheKey, "true");
+        } catch (err) {
+          console.error(
+            "❌ Failed to add inline comments:",
+            err.response?.data || err.message
+          );
+        }
+      }
+    } else {
+      console.log(
+        `⚡ Inline comments already added for commit ${latestCommit}, skipping`
+      );
+    }
+
+    const statusCacheKey = `repo:${repoId}:pr:${prNumber}:status:${latestCommit}`;
+    const statusAlreadySet = await redis.get(statusCacheKey);
+
+    if (!statusAlreadySet) {
+      await setCommitStatus({
+        owner,
+        repo: repoName,
+        sha: latestCommit,
+        token: user.githubToken,
+        state: parsed.healthScore >= 60 ? "success" : "failure",
+        description:
+          parsed.healthScore >= 60
+            ? "PR meets quality threshold"
+            : "PR blocked by MergeMind quality gate",
+      });
+
+      await redis.set(statusCacheKey, "true");
     }
 
     pull.healthScore = parsed.healthScore;
