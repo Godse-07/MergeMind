@@ -6,6 +6,7 @@ const axios = require("axios");
 const Repo = require("../model/Repo");
 const { registerWebhook } = require("../config/registerWebhook");
 const { getFrontendBaseUrl } = require("../helper/findBaseURLHelper");
+const redis = require("../cache/redis");
 
 const loginController = async (req, res) => {
   try {
@@ -191,6 +192,10 @@ const connectGithubController = async (req, res) => {
     }
 
     const url = getFrontendBaseUrl(req);
+
+    await redis.del(`user:${currUser._id}:repos`);
+    await redis.del(`user:${currUser._id}:dashboardStats`);
+
     res.redirect(`${url}/`);
   } catch (error) {
     console.log("Error in connectGithub controller", error);
@@ -244,14 +249,12 @@ const disconnectGithubController = async (req, res) => {
     user.githubToken = null;
     await user.save();
 
-  
     res.status(200).json({ message: "GitHub disconnected successfully" });
   } catch (error) {
     console.log("Error in disconnectGithubController", error);
     res.status(500).json({ message: "Error disconnecting GitHub" });
   }
 };
-
 
 module.exports = {
   loginController,

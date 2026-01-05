@@ -57,10 +57,7 @@ const githubWebhookController = async (req, res) => {
       repo.lastPushedBy = pushData.user;
       await repo.save();
 
-      await Promise.all([
-        redis.del(repoCacheKey),
-        redis.del(dashboardKey),
-      ]);
+      await Promise.all([redis.del(repoCacheKey), redis.del(dashboardKey)]);
       console.log(`🧹 Cache cleared for ${repoCacheKey} after push`);
     }
 
@@ -143,11 +140,19 @@ const githubWebhookController = async (req, res) => {
       repo.lastPrBy = pr.user;
       await repo.save();
 
+      const prsListKey = `repo:${repo.githubId}:prs`;
+      const prDetailsKey = `repo:${repo.githubId}:pr:${prPayload.number}`;
+
       await Promise.all([
         redis.del(repoCacheKey),
         redis.del(dashboardKey),
+        redis.del(prsListKey),
+        redis.del(prDetailsKey),
       ]);
-      console.log(`🧹 Cache cleared for ${repoCacheKey} after pull_request`);
+
+      console.log(
+        `🧹 Cache cleared for PR update: ${prsListKey}, ${prDetailsKey}`
+      );
     }
 
     if (event === "repository" && payload.action === "deleted") {
@@ -155,10 +160,7 @@ const githubWebhookController = async (req, res) => {
       await Pull.deleteMany({ repo: repo._id });
       await Push.deleteMany({ repo: repo._id });
 
-      await Promise.all([
-        redis.del(repoCacheKey),
-        redis.del(dashboardKey),
-      ]);
+      await Promise.all([redis.del(repoCacheKey), redis.del(dashboardKey)]);
 
       console.log(
         `🗑️ Repository ${payload.repository.full_name} deleted from DB`
@@ -183,10 +185,7 @@ const githubWebhookController = async (req, res) => {
       repo.lastStarredAt = formatToReadable(new Date());
       await repo.save();
 
-      await Promise.all([
-        redis.del(repoCacheKey),
-        redis.del(dashboardKey),
-      ]);
+      await Promise.all([redis.del(repoCacheKey), redis.del(dashboardKey)]);
       console.log(`🧹 Cache cleared for ${repoCacheKey} after star`);
     }
 
@@ -201,10 +200,7 @@ const githubWebhookController = async (req, res) => {
       repo.lastForkedAt = formatToReadable(new Date());
       await repo.save();
 
-      await Promise.all([
-        redis.del(repoCacheKey),
-        redis.del(dashboardKey),
-      ]);
+      await Promise.all([redis.del(repoCacheKey), redis.del(dashboardKey)]);
       console.log(`🧹 Cache cleared for ${repoCacheKey} after fork`);
     }
 

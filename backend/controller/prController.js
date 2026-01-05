@@ -21,10 +21,12 @@ const sendMail = require("../utils/mailer");
 const getRepoPRs = async (req, res) => {
   try {
     const { repoId } = req.params;
+    const forceRefresh = req.query.force === "true";
     const cacheKey = `repo:${repoId}:prs`;
 
     const cachedPRs = await redis.get(cacheKey);
-    if (cachedPRs) {
+
+    if (cachedPRs && !forceRefresh) {
       console.log(`⚡ Serving PR list for repo ${repoId} from cache`);
       return res.status(200).json({
         success: true,
@@ -33,10 +35,16 @@ const getRepoPRs = async (req, res) => {
       });
     }
 
+    if (forceRefresh) {
+      console.log(`🔄 Force refresh enabled for repo ${repoId}`);
+      await redis.del(cacheKey);
+    }
+
     const repo = await Repo.findOne({ githubId: Number(repoId) });
     if (!repo) return res.status(404).json({ message: "Repo not found" });
 
     const prs = await Pull.find({ repo: repo._id }).sort({ createdAt: -1 });
+
     await redis.setex(cacheKey, 300, JSON.stringify(prs));
 
     res.status(200).json({ success: true, prs, fromCache: false });
