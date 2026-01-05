@@ -1,4 +1,4 @@
-# 🚀 PR Checker — Automated Pull Request Analysis & Code Quality Insights  
+# 🚀 PR Checker — Automated Pull Request Analysis & Code Quality Insights
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/Godse-07/MergeMind/master/frontend/public/Merge_Mind.jpg" 
@@ -11,14 +11,13 @@
 [![Express.js](https://img.shields.io/badge/API-Express.js-black?logo=express&logoColor=white)](https://expressjs.com/)
 [![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?logo=vercel)](https://merge-mind.vercel.app/)
 
-
 **Live URL:** 🔗 [https://mergemind.me](https://mergemind.me/)
 
 ---
 
 ## 🧠 Overview
 
-**PR Checker** is an AI-powered platform that automatically analyzes GitHub pull requests using the Gemini API.  
+**PR Checker** is an AI-powered platform that automatically analyzes GitHub pull requests using the OpenRouter API.  
 It helps developers improve **code quality**, **documentation**, and **consistency** through actionable insights and health scoring.
 
 ---
@@ -26,16 +25,18 @@ It helps developers improve **code quality**, **documentation**, and **consisten
 ## 🧰 Tech Stack
 
 ### **Frontend**
+
 - ⚛️ React (Vite)
 - 🎨 Tailwind CSS
 - 🔄 Axios
 - 🌐 Deployed on Vercel
 
 ### **Backend**
+
 - 🟩 Node.js + Express.js
 - 🍃 MongoDB (Mongoose)
 - 🔐 JWT Authentication
-- 🤖 Gemini AI API
+- 🤖 OpenRouter API (model - mistralai/devstral-2512:free)
 - ☁️ Deployed on Render
 - ⚙️ GitHub OAuth + Webhooks Integration
 
@@ -57,6 +58,7 @@ It helps developers improve **code quality**, **documentation**, and **consisten
 ## ⚙️ Environment Variables
 
 ### 🧩 **Backend (.env)**
+
 ```env
 MONGO_URL=
 JWT_SECRET=
@@ -65,18 +67,26 @@ GITHUB_CLIENT_SECRET=
 GITHUB_WEBHOOK_SECRET=
 BACKEND_URL=
 FRONTEND_URL=
-GEMINI_API_KEY=
+OPENROUTER_API_KEY=
+REDIS_HOST =
+REDIS_PORT =
+REDIS_USERNAME =
+REDIS_PASSWORD =
+RESEND_API_KEY =
 ```
 
 ## 💻 Frontend (.env)
+
 ```env
 VITE_GITHUB_CLIENT_ID=
 VITE_GITHUB_REDIRECT_URI=
 VITE_BASEURL=
 ```
+
 ---
 
 ### 🛠️ Setup Instructions
+
 ```bash
 # 1️⃣ Clone the Repository
 git clone https://github.com/Godse-07/MergeMind
@@ -132,15 +142,16 @@ pr-checker/
 ```
 
 ### 🛠️ Setup Instructions
-``` bash
-1️⃣ Sign in using your GitHub account  
-2️⃣ Connect your repositories  
-3️⃣ Click “Analyze PRs” on any repository  
+
+```bash
+1️⃣ Sign in using your GitHub account
+2️⃣ Connect your repositories
+3️⃣ Click “Analyze PRs” on any repository
 
 The app will:
-- Fetch PRs from GitHub  
-- Analyze them using the Gemini API  
-- Display health scores and suggestions  
+- Fetch PRs from GitHub
+- Analyze them using the Gemini API
+- Display health scores and suggestions
 
 ✅ View, export, or copy analysis results (working on)
 ```
@@ -148,46 +159,57 @@ The app will:
 ## 🔌 API Endpoints
 
 ### **Auth Routes**
-| Method | Endpoint                       | Description                                      | Middleware   |
-|--------|--------------------------------|--------------------------------------------------|-------------|
-| POST   | `/login`                        | User login                                       | —           |
-| POST   | `/signup`                       | User signup                                      | —           |
-| GET    | `/logout`                       | User logout                                      | —           |
-| GET    | `/connectGithub/callback`       | GitHub OAuth callback                            | —           |
-| GET    | `/disconnectGithub`             | Disconnect GitHub account                        | `isLoggedIn`|
-| GET    | `/me`                           | Get logged-in user details                       | `isLoggedIn`|
+
+| Method | Endpoint                  | Description                          | Middleware   |
+| ------ | ------------------------- | ------------------------------------ | ------------ |
+| POST   | `/login`                  | User login                           | —            |
+| POST   | `/signup`                 | User signup                          | —            |
+| GET    | `/logout`                 | User logout                          | —            |
+| GET    | `/connectGithub/callback` | GitHub OAuth callback                | —            |
+| GET    | `/disconnectGithub`       | Disconnect GitHub account            | `isLoggedIn` |
+| GET    | `/me`                     | Get currently logged-in user details | `isLoggedIn` |
 
 ---
 
 ### **Dashboard Routes**
-| Method | Endpoint      | Description                        | Middleware   |
-|--------|---------------|------------------------------------|-------------|
-| GET    | `/stats`      | Get dashboard statistics           | `isLoggedIn`|
+
+| Method | Endpoint | Description                | Middleware   |
+| ------ | -------- | -------------------------- | ------------ |
+| GET    | `/stats` | Fetch dashboard statistics | `isLoggedIn` |
 
 ---
 
 ### **Repository Routes**
-| Method | Endpoint      | Description                        | Middleware   |
-|--------|---------------|------------------------------------|-------------|
-| GET    | `/repos`      | Get list of connected repositories | `isLoggedIn`|
+
+| Method | Endpoint | Description                                   | Middleware   |
+| ------ | -------- | --------------------------------------------- | ------------ |
+| GET    | `/repos` | Get all GitHub repositories connected by user | `isLoggedIn` |
 
 ---
 
 ### **Pull Request (PR) Routes**
-| Method | Endpoint                          | Description                       | Middleware   |
-|--------|-----------------------------------|-----------------------------------|-------------|
-| GET    | `/:repoId/prs`                     | Get all PRs for a repository      | `isLoggedIn`|
-| GET    | `/:repoId/prs/:prNumber`           | Get details of a specific PR      | `isLoggedIn`|
-| POST   | `/:repoId/prs/:prNumber/analyze`  | Trigger PR analysis               | `isLoggedIn`|
+
+| Method | Endpoint                         | Description                  | Middleware   |
+| ------ | -------------------------------- | ---------------------------- | ------------ |
+| GET    | `/:repoId/prs`                   | Get all PRs of a repository  | `isLoggedIn` |
+| GET    | `/:repoId/prs/:prNumber`         | Get details of a specific PR | `isLoggedIn` |
+| POST   | `/:repoId/prs/:prNumber/analyze` | Trigger AI-based PR analysis | `isLoggedIn` |
 
 ---
 
-### **Webhook Routes**
-| Method | Endpoint                  | Description                                   | Middleware   |
-|--------|---------------------------|-----------------------------------------------|-------------|
-| POST   | `/github`                 | GitHub webhook listener                        | —           |
-| POST   | `/register/:repoId`       | Register a new webhook for a repository       | —           |
+### **Custom Rule Routes**
 
+| Method | Endpoint    | Description                        | Middleware   |
+| ------ | ----------- | ---------------------------------- | ------------ |
+| GET    | `/getRules` | Get user-defined PR analysis rules | `isLoggedIn` |
+| POST   | `/setRules` | Set or update custom PR rules      | `isLoggedIn` |
+
+### **Webhook Routes**
+
+| Method | Endpoint            | Description                             | Middleware |
+| ------ | ------------------- | --------------------------------------- | ---------- |
+| POST   | `/github`           | GitHub webhook listener                 | —          |
+| POST   | `/register/:repoId` | Register a new webhook for a repository | —          |
 
 ## 📝 Contribution & Pull Request Guidelines
 
@@ -196,6 +218,7 @@ We welcome contributions to **PR Checker**! Please follow these guidelines to en
 ---
 
 ### 1️⃣ Create a Branch
+
 - Always create a **new branch** for your work.
 - Branch naming convention:  
   name/(fix|refactor|feat)/<short-description>
@@ -208,16 +231,18 @@ pushan/refactor/pr-analysis
 ---
 
 ### 2️⃣ Clear & Descriptive Title
+
 - Use a **concise and understandable PR title**.
 - Title should clearly describe what the PR does.  
-**Example:**  
-Add GitHub OAuth login flow  
-Fix bug in dashboard stats calculation  
-Refactor PR analysis controller
+  **Example:**  
+  Add GitHub OAuth login flow  
+  Fix bug in dashboard stats calculation  
+  Refactor PR analysis controller
 
 ---
 
 ### 3️⃣ Add Description
+
 - Always include a **detailed description** of what your PR does.
 - Include **screenshots** if your changes affect UI or require testing visuals.
 - Mention any **linked issues or tasks**.
@@ -225,6 +250,7 @@ Refactor PR analysis controller
 ---
 
 ### 4️⃣ Testing
+
 - Make sure your code is **tested before creating a PR**.
 - If applicable, attach **screenshots, GIFs, or logs** showing the test results.
 - Ensure all backend routes and frontend features work as expected.
@@ -232,6 +258,7 @@ Refactor PR analysis controller
 ---
 
 ### 5️⃣ Code Quality
+
 - Follow **consistent coding style** (Prettier / ESLint).
 - Keep your code **clean, modular, and readable**.
 - Write **meaningful commit messages**.
@@ -239,7 +266,9 @@ Refactor PR analysis controller
 ---
 
 ### 6️⃣ Pull Request Checklist
+
 Before submitting your PR, make sure:
+
 - [ ] Branch is up-to-date with `main`.
 - [ ] Code is tested and working.
 - [ ] Descriptive PR title and description is provided.
@@ -250,6 +279,7 @@ Before submitting your PR, make sure:
 ---
 
 ### 7️⃣ Review & Merge
+
 - PRs will be **reviewed by maintainers**.
 - Only approved PRs will be **merged into `main`**.
 - Minor fixes or typos may be merged immediately.
@@ -257,8 +287,7 @@ Before submitting your PR, make sure:
 ---
 
 ### 8️⃣ Additional Notes
+
 - For large features, **split into multiple PRs** if possible.
 - If a PR requires discussion, use **comments to clarify** your approach.
 - Be respectful and collaborative in **code review discussions**.
-
-
