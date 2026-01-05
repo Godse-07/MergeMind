@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router";
+import LifeLineLoader from "../components/LifeLineLoader";
 
 const DashboardPage = () => {
   const { user } = useContext(UserContext);
@@ -143,9 +144,7 @@ const DashboardPage = () => {
         {/* Stats Cards */}
         <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           {loading ? (
-            <div className="col-span-full text-gray-500 text-center">
-              Loading dashboard stats...
-            </div>
+            <LifeLineLoader />
           ) : (
             statsCards.map((card) => (
               <div
