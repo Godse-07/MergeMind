@@ -1,24 +1,30 @@
 const axios = require("axios");
 
 function attachLineNumbersToSuggestions(suggestions, detailedFiles) {
-  return suggestions.map((s) => {
-    if (!s.file || !s.lineHint) return s;
+  const result = [];
+
+  for (const s of suggestions) {
+    if (s.severity !== "error" || !s.file) continue;
 
     const file = detailedFiles.find((f) => f.filename === s.file);
-    if (!file || !file.fullContent) return s;
+    if (!file || !file.patchLines?.length) continue;
 
-    const lines = file.fullContent.split("\n");
+    const hunkHeader = file.patchLines.find((l) => l.startsWith("@@"));
+    if (!hunkHeader) continue;
 
-    const lineIndex = lines.findIndex((l) => l.includes(s.lineHint));
+    const match = hunkHeader.match(/\+(\d+)/);
+    if (!match) continue;
 
-    if (lineIndex === -1) return s;
+    const newFileLine = Number(match[1]);
 
-    return {
+    result.push({
       ...s,
-      line: lineIndex + 1,
+      line: newFileLine,
       side: "RIGHT",
-    };
-  });
+    });
+  }
+
+  return result;
 }
 
 async function createInlineReview({
@@ -55,6 +61,5 @@ async function createInlineReview({
     }
   );
 }
-
 
 module.exports = { attachLineNumbersToSuggestions, createInlineReview };

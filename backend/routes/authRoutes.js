@@ -5,7 +5,6 @@ const {
   logoutController,
   connectGithubController,
   disconnectGithubController,
-  reconnectWebhooksController,
 } = require("../controller/authController");
 const isLoggedIn = require("../middleware/isLoggedIn");
 const authRouter = express.Router();

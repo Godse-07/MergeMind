@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Link, useParams } from "react-router";
 import Navbar from "../components/Navbar";
 import toast from "react-hot-toast";
-import { repositoryPr } from "../lib/api";
+import { repositoryPr, syncRepository } from "../lib/api";
 import {
   GitPullRequest,
   Search,
@@ -15,6 +15,7 @@ import {
   File,
   Plus,
   Minus,
+  RotateCcw,
 } from "lucide-react";
 
 const RepositoryPage = () => {
@@ -24,6 +25,25 @@ const RepositoryPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("latest");
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncRepo = async () => {
+    try {
+      setSyncing(true);
+
+      const repoId = localStorage.getItem(`${repoName}-id`);
+      await syncRepository(repoId);
+
+      toast.success("Repository synced successfully");
+
+      // After sync → refresh PRs
+      await fetchPRs();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to sync repository");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const fetchPRs = async () => {
     try {
@@ -114,18 +134,39 @@ const RepositoryPage = () => {
               Monitor pull request health and quality metrics.
             </p>
           </div>
-          <button
-            onClick={fetchPRs}
-            disabled={loading}
-            className={`flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors ${
-              loading ? "opacity-70 cursor-not-allowed" : "hover:bg-blue-700"
-            }`}
-          >
-            <RefreshCcw
-              className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Refresh Button */}
+            <button
+              onClick={fetchPRs}
+              disabled={loading || syncing}
+              className={`flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors ${
+                loading || syncing
+                  ? "opacity-70 cursor-not-allowed"
+                  : "hover:bg-blue-700"
+              }`}
+            >
+              <RefreshCcw
+                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </button>
+
+            {/* Sync Button */}
+            <button
+              onClick={handleSyncRepo}
+              disabled={syncing || loading}
+              className={`flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg border border-gray-300 transition-colors ${
+                syncing || loading
+                  ? "opacity-70 cursor-not-allowed"
+                  : "hover:bg-gray-200"
+              }`}
+            >
+              <RotateCcw
+                className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`}
+              />
+              Sync
+            </button>
+          </div>
         </div>
 
         {/* Filters */}

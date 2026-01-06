@@ -92,3 +92,8 @@ export const getCustomRules = async () => {
   const response = await axiosInstance.get("/rules/getRules");
   return response.data;
 }
+
+export const syncRepository = async (repoId) => {
+  const response = await axiosInstance.post(`/sync/repo/${repoId}`);
+  return response.data;
+}
