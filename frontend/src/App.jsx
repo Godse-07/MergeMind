@@ -13,6 +13,7 @@ import Forgetpasswordpage from "./pages/Forgetpasswordpage";
 import OTPPage from "./pages/OTPPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SettingsPage from "./pages/SettingsPage";
+import SignupOTPPage from "./pages/SignupOTPPage";
 
 const App = () => {
   return (
@@ -29,6 +30,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+        <Route path="/signup-otp" element={<SignupOTPPage />} />
         <Route path="/forgot-password" element={<Forgetpasswordpage />} />
         <Route path="/otp" element={<OTPPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />

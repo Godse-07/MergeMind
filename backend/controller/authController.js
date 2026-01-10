@@ -24,6 +24,11 @@ const loginController = async (req, res) => {
       return res.status(400).json({ message: "User not found" });
     }
 
+    // check user is verified or not
+    if(!user.isVerified) {
+      return res.status(400).json({ message: "User is not verified. Please verify your email to login." });
+    }
+
     // checking if password is correct
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {

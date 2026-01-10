@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useNavigate, useLocation } from "react-router";
-import { forgetPassword, verifyOTP } from "../lib/api";
+import { sendSignupOTP, verifySignupOTP } from "../lib/api";
 
-const OTPPage = () => {
+const SignupOTPPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -11,13 +11,12 @@ const OTPPage = () => {
 
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
-
   const [timer, setTimer] = useState(60);
 
   useEffect(() => {
     if (!email) {
-      toast.error("Email missing. Please enter again.");
-      navigate("/forgot-password");
+      toast.error("Email missing. Please signup again.");
+      navigate("/signup");
       return;
     }
 
@@ -41,14 +40,14 @@ const OTPPage = () => {
     setLoading(true);
 
     try {
-      await verifyOTP(email, otp);
+      await verifySignupOTP(email, otp);
 
-      toast.success("OTP Verified 🎉");
+      toast.success("Account verified successfully 🎉");
 
-      navigate("/reset-password", { state: { email } });
+      navigate("/login");
     } catch (err) {
       toast.error(
-        err.response?.data?.message || "Incorrect OTP. Please try again."
+        err.response?.data?.message || "Invalid OTP. Please try again."
       );
     } finally {
       setLoading(false);
@@ -56,12 +55,11 @@ const OTPPage = () => {
   };
 
   const handleResend = async () => {
-    if (timer !== 0) return; // safety
+    if (timer !== 0) return;
 
     try {
-      await forgetPassword(email);
+      await sendSignupOTP(email);
       toast.success("OTP resent to your email");
-
       setTimer(60);
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to resend OTP");
@@ -79,7 +77,7 @@ const OTPPage = () => {
       {/* Card */}
       <div className="w-full max-w-md bg-white/80 backdrop-blur-md border border-gray-200 rounded-2xl shadow-xl p-8">
         <h2 className="text-2xl font-semibold text-gray-800 text-center mb-2">
-          Verify OTP 🔐
+          Verify Your Email 🔐
         </h2>
 
         <p className="text-center text-gray-500 mb-6">
@@ -136,4 +134,4 @@ const OTPPage = () => {
   );
 };
 
-export default OTPPage;
+export default SignupOTPPage;

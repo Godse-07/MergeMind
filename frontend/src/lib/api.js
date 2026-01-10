@@ -78,6 +78,16 @@ export const verifyOTP = async (email, otp) => {
   return response.data;
 }
 
+export const sendSignupOTP = async (email) => {
+  const response = await axiosInstance.post("/signupOTP/send-signup-otp", { email });
+  return response.data;
+}
+
+export const verifySignupOTP = async (email, otp) => {
+  const response = await axiosInstance.post("/signupOTP/verify-signup-otp", { email, otp });
+  return response.data;
+}
+
 export const resetPassword = async (email, newPassword) => {
   const response = await axiosInstance.post("/password-forget/reset-password", { email, newPassword });
   return response.data;

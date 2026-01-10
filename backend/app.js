@@ -14,6 +14,7 @@ const dashboardRouter = require("./routes/dashboardRoutes");
 const passwordForgetRouter = require("./routes/passwordForgetRoutes");
 const rulesRouter = require("./routes/rulesRoute");
 const syncRouter = require("./routes/syncRoutes");
+const signUpOTPRouter = require("./routes/signupOTPRoute");
 
 const app = express();
 
@@ -53,6 +54,8 @@ app.use("/api/password-forget", passwordForgetRouter);
 app.use("/api/rules", rulesRouter);
 
 app.use("/api/sync", syncRouter);
+
+app.use("/api/signupOTP", signUpOTPRouter);
 
 app.get("/", (req, res) => {
   res.send("Welcome to MergeMind API");

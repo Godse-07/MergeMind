@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
-import { signUp } from "../lib/api";
+import { sendSignupOTP, signUp } from "../lib/api";
 import { useNavigate } from "react-router";
 
 const SignupPage = () => {
@@ -53,7 +53,10 @@ const SignupPage = () => {
         email: "",
         password: "",
       });
-      navigate("/login");
+      await sendSignupOTP(email);
+      navigate("/signup-otp", {
+        state: { email }
+      });
     } catch (err) {
       if (err.response?.data?.message) {
         toast.error(err.response.data.message);
