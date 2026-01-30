@@ -45,7 +45,7 @@ const sendSignupOTP = async (req, res) => {
     // sending email to the user with the valid otp
     await sendMail({
       to: email,
-      subject: "Verigy your account - MergeMind",
+      subject: "Verify your account - MergeMind",
       html: signUpEmailTemplate({ otp }),
     });
 
