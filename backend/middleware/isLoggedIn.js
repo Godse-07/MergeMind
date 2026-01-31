@@ -12,7 +12,7 @@ const isLoggedIn = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const details = await User.findById(decoded.id).select(
-      "fullName email githubConnected profilePicture"
+      "-password -githubToken",
     );
 
     if (!details) {

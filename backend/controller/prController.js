@@ -17,6 +17,7 @@ const { upsertPRComment } = require("../utils/githubPRComment");
 const { createPRReview } = require("../utils/githubPRReview");
 const { setCommitStatus } = require("../utils/githubStatusCheck");
 const sendMail = require("../utils/mailer");
+const { estimateTokens } = require("../utils/tokenUtils");
 
 const getRepoPRs = async (req, res) => {
   try {
@@ -62,7 +63,7 @@ const getPRDetails = async (req, res) => {
     const cachedPR = await redis.get(cacheKey);
     if (cachedPR) {
       console.log(
-        `⚡ Serving PR #${prNumber} details for repo ${repoId} from cache`
+        `⚡ Serving PR #${prNumber} details for repo ${repoId} from cache`,
       );
       return res.status(200).json({
         success: true,
@@ -107,7 +108,7 @@ const triggerPRAnalysis = async (req, res) => {
 
     const commits = await githubRequest(
       `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}/commits`,
-      user.githubToken
+      user.githubToken,
     );
 
     const latestCommit = commits[commits.length - 1]?.sha;
@@ -123,12 +124,12 @@ const triggerPRAnalysis = async (req, res) => {
 
     if (lastAnalyzedCommit && lastAnalyzedCommit === latestCommit) {
       console.log(
-        `⚡ PR #${prNumber} has no new commits, skipping Gemini call`
+        `⚡ PR #${prNumber} has no new commits, skipping Gemini call`,
       );
       const analysis = await PRAnalysis.findOne({
         repo: repo._id,
         pull: await Pull.findOne({ repo: repo._id, prNumber }).then(
-          (p) => p?._id
+          (p) => p?._id,
         ),
       });
 
@@ -146,12 +147,12 @@ const triggerPRAnalysis = async (req, res) => {
 
     const prInfo = await githubRequest(
       `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}`,
-      user.githubToken
+      user.githubToken,
     );
 
     const files = await githubRequest(
       `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}/files`,
-      user.githubToken
+      user.githubToken,
     );
 
     const allFiles = files;
@@ -168,11 +169,11 @@ const triggerPRAnalysis = async (req, res) => {
 
               const fileResponse = await githubRequest(
                 `https://api.github.com/repos/${headRepoFullName}/contents/${f.filename}?ref=${prInfo.head.ref}`,
-                user.githubToken
+                user.githubToken,
               );
 
               content = Buffer.from(fileResponse.content, "base64").toString(
-                "utf8"
+                "utf8",
               );
 
               if (content.length > 10000) {
@@ -204,7 +205,7 @@ const triggerPRAnalysis = async (req, res) => {
             patchLines: [],
           };
         }
-      })
+      }),
     );
 
     console.log("📁 File changes detected:");
@@ -214,7 +215,7 @@ const triggerPRAnalysis = async (req, res) => {
       console.log(
         `   - ${f.status.toUpperCase()}: ${f.filename} → ${
           hasDiff ? "has diff" : "no diff"
-        }`
+        }`,
       );
     });
 
@@ -278,11 +279,52 @@ ${JSON.stringify(prData, null, 2)}
 `;
 
     let rawResponse;
+    let estimatedTokens = 0;
+    let actualTokens = 0;
+    let modelUsed = "unknown";
 
     try {
-      rawResponse = await runAI(prompt);
+      if (user.usage?.resetAt && new Date() >= user.usage.resetAt) {
+        user.usage.tokensUsedThisMonth = 0;
+
+        const next = new Date();
+        next.setMonth(next.getMonth() + 1, 1);
+        next.setHours(0, 0, 0, 0);
+        user.usage.resetAt = next;
+
+        await user.save();
+      }
+
+      estimatedTokens = estimateTokens(prompt);
+
+      if (
+        user.usage.tokensUsedThisMonth + estimatedTokens >
+        user.usage.monthlyTokenLimit
+      ) {
+        return res.status(402).json({
+          success: false,
+          code: "TOKEN_LIMIT_EXCEEDED",
+          message: "Monthly AI token limit exceeded",
+          meta: {
+            limit: user.usage.monthlyTokenLimit,
+            used: user.usage.tokensUsedThisMonth,
+            required: estimatedTokens,
+            resetAt: user.usage.resetAt,
+          },
+        });
+      }
+
+      const aiResult = await runAI(prompt);
+
+      rawResponse = aiResult.content;
+
+      actualTokens = aiResult.usage?.total_tokens ?? estimatedTokens;
+      modelUsed = aiResult.model ?? "unknown";
+
+      user.usage.tokensUsedThisMonth += actualTokens;
+      await user.save();
     } catch (aiErr) {
-      console.error("❌ Openrouter AI error:", aiErr.message);
+      console.error("❌ AI error:", aiErr.message);
 
       return res.status(200).json({
         success: false,
@@ -344,10 +386,12 @@ ${JSON.stringify(prData, null, 2)}
           status: f.status || "modified",
           changes: f.changes || [],
         })),
+        tokensUsed: actualTokens,
+        modelUsed: modelUsed,
         ...parsed,
         analyzedAt: new Date().toISOString(),
       },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, new: true, setDefaultsOnInsert: true },
     );
 
     try {
@@ -387,11 +431,11 @@ ${JSON.stringify(prData, null, 2)}
 
     const suggestionsWithLines = attachLineNumbersToSuggestions(
       parsed.suggestions,
-      detailedFiles
+      detailedFiles,
     );
 
     const inlineSuggestions = suggestionsWithLines.filter(
-      (s) => s.file && s.line
+      (s) => s.file && s.line,
     );
 
     suggestionsWithLines
@@ -421,13 +465,13 @@ ${JSON.stringify(prData, null, 2)}
         } catch (err) {
           console.error(
             "❌ Failed to add inline comments:",
-            err.response?.data || err.message
+            err.response?.data || err.message,
           );
         }
       }
     } else {
       console.log(
-        `⚡ Inline comments already added for commit ${latestCommit}, skipping`
+        `⚡ Inline comments already added for commit ${latestCommit}, skipping`,
       );
     }
 
@@ -480,14 +524,14 @@ ${JSON.stringify(prData, null, 2)}
     ]);
 
     console.log(
-      `🧠 PR #${prNumber} analysis updated, saved & caches refreshed`
+      `🧠 PR #${prNumber} analysis updated, saved & caches refreshed`,
     );
 
     console.log(req.user.email + " from prController triggerPRAnalysis");
 
     try {
       const dashboardUrl = `${getFrontendBaseUrl(
-        req
+        req,
       )}/repository/${repoName}/pr/${prNumber}`;
 
       await sendMail({
@@ -505,7 +549,7 @@ ${JSON.stringify(prData, null, 2)}
       console.log(`📧 Email notification sent for PR #${prNumber}`);
     } catch (emailErr) {
       console.error(
-        `❌ Failed to send email notification: ${emailErr.message}`
+        `❌ Failed to send email notification: ${emailErr.message}`,
       );
     }
 

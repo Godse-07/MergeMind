@@ -49,6 +49,7 @@ const loginController = async (req, res) => {
         email: user.email,
         githubConnected: user.githubConnected,
         profilePicture: user.profilePicture,
+        usage: user.usage,
       },
     });
   } catch (error) {

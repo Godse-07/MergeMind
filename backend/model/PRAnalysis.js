@@ -3,7 +3,7 @@ const { formatToReadable } = require("../config/dateFunction");
 
 const fileChangeSchema = new mongoose.Schema({
   filename: { type: String, required: true },
-  previousFilename: { type: String }, // 🆕 for renamed files
+  previousFilename: { type: String },
   status: {
     type: String,
     enum: ["added", "modified", "removed", "renamed"],
@@ -66,6 +66,8 @@ const prAnalysisSchema = new mongoose.Schema(
     filesChanged: { type: Number },
     linesAdded: { type: Number },
     linesDeleted: { type: Number },
+    tokensUsed: { type: Number, default: 0 },
+    modelUsed: { type: String },
     commits: { type: Number },
     suggestions: { type: [suggestionSchema], default: [] },
     comments: { type: [commentSchema], default: [] },
@@ -75,7 +77,7 @@ const prAnalysisSchema = new mongoose.Schema(
       default: [],
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const PRAnalysis = mongoose.model("PRAnalysis", prAnalysisSchema);
